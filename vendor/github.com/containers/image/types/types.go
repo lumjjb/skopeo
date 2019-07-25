@@ -7,7 +7,7 @@ import (
 
 	"github.com/containers/image/docker/reference"
 	"github.com/opencontainers/go-digest"
-	"github.com/opencontainers/image-spec/specs-go/v1"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // ImageTransport is a top-level namespace for ways to to store/load an image.
@@ -489,6 +489,8 @@ type SystemContext struct {
 	DockerInsecureSkipTLSVerify OptionalBool
 	// if nil, the library tries to parse ~/.docker/config.json to retrieve credentials
 	DockerAuthConfig *DockerAuthConfig
+	// if not nil, decryption keys will be used to decrypt container image
+	DecryptParams []string
 	// if not "", an User-Agent header is added to each request when contacting a registry.
 	DockerRegistryUserAgent string
 	// if true, a V1 ping attempt isn't done to give users a better error. Default is false.
@@ -511,6 +513,8 @@ type SystemContext struct {
 	// === dir.Transport overrides ===
 	// DirForceCompress compresses the image layers if set to true
 	DirForceCompress bool
+	// IsCachedImage indicate if the image being pulled is already cached
+	IsCachedImage bool
 }
 
 // ProgressProperties is used to pass information from the copy code to a monitor which

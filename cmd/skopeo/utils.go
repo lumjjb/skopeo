@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	b64 "encoding/base64"
 	"errors"
 	"io"
+	"io/ioutil"
 	"strings"
 
 	"github.com/containers/image/transports/alltransports"
@@ -60,6 +62,7 @@ type imageOptions struct {
 	sharedBlobDir    string              // A directory to use for OCI blobs, shared across repositories
 	dockerDaemonHost string              // docker-daemon: host to connect to
 	noCreds          bool                // Access the registry anonymously
+	keyFile          string              // File that holds the key to either encrypt or decrypt an image
 }
 
 // imageFlags prepares a collection of CLI flags writing into imageOptions, and the managed imageOptions structure.
@@ -107,6 +110,11 @@ func imageFlags(global *globalOptions, shared *sharedImageOptions, flagPrefix, c
 			Usage:       "Access the registry anonymously",
 			Destination: &opts.noCreds,
 		},
+		cli.StringFlag{
+			Name:        flagPrefix + "key",
+			Usage:       "Encrytion keys for encrypted images",
+			Destination: &opts.keyFile,
+		},
 	}, &opts
 }
 
@@ -143,6 +151,15 @@ func (opts *imageOptions) newSystemContext() (*types.SystemContext, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+	if opts.keyFile != "" {
+		keyFile, err := ioutil.ReadFile(opts.keyFile)
+		if err != nil {
+			return nil, err
+		}
+
+		encodedKey := b64.StdEncoding.EncodeToString(keyFile)
+		ctx.DecryptParams = []string{encodedKey}
 	}
 	if opts.noCreds {
 		ctx.DockerAuthConfig = &types.DockerAuthConfig{}
