@@ -1,3 +1,5 @@
+// +build windows
+
 /*
    Copyright The containerd Authors.
 
@@ -14,27 +16,16 @@
    limitations under the License.
 */
 
-package enclib
+package platforms
 
 import (
-	"io"
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-type readerAtReader struct {
-	r   io.ReaderAt
-	off int64
-}
-
-// ReaderFromReaderAt takes an io.ReaderAt and returns an io.Reader
-func ReaderFromReaderAt(r io.ReaderAt) io.Reader {
-	return &readerAtReader{
-		r:   r,
-		off: 0,
-	}
-}
-
-func (rar *readerAtReader) Read(p []byte) (n int, err error) {
-	n, err = rar.r.ReadAt(p, rar.off)
-	rar.off += int64(n)
-	return n, err
+// Default returns the default matcher for the platform.
+func Default() MatchComparer {
+	return Ordered(DefaultSpec(), specs.Platform{
+		OS:           "linux",
+		Architecture: "amd64",
+	})
 }

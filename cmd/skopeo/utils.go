@@ -2,16 +2,14 @@ package main
 
 import (
 	"context"
-	b64 "encoding/base64"
-	"errors"
 	"io"
-	"io/ioutil"
 	"strings"
 
-	"github.com/containers/image/encryption/enclib/config"
-	"github.com/containers/image/encryption/enclib/utils"
+	//"github.com/containers/image/encryption/enclib/config"
+	//encutils "github.com/containers/image/encryption/enclib/utils"
 	"github.com/containers/image/transports/alltransports"
 	"github.com/containers/image/types"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -64,7 +62,8 @@ type imageOptions struct {
 	sharedBlobDir    string              // A directory to use for OCI blobs, shared across repositories
 	dockerDaemonHost string              // docker-daemon: host to connect to
 	noCreds          bool                // Access the registry anonymously
-	keyFile          string              // File that holds the key to either encrypt or decrypt an image
+	keyFiles         string              // Files that holds the key to either encrypt or decrypt an image
+	recipients       string              // Files that holds the key to either encrypt or decrypt an image
 }
 
 // imageFlags prepares a collection of CLI flags writing into imageOptions, and the managed imageOptions structure.
@@ -114,8 +113,13 @@ func imageFlags(global *globalOptions, shared *sharedImageOptions, flagPrefix, c
 		},
 		cli.StringFlag{
 			Name:        flagPrefix + "key",
-			Usage:       "Encrytion keys for encrypted images",
-			Destination: &opts.keyFile,
+			Usage:       "Keys for decryption of encrypted images",
+			Destination: &opts.keyFiles,
+		},
+		cli.StringFlag{
+			Name:        flagPrefix + "recipient",
+			Usage:       "Recipient for encryption of images",
+			Destination: &opts.recipients,
 		},
 	}, &opts
 }
@@ -154,25 +158,18 @@ func (opts *imageOptions) newSystemContext() (*types.SystemContext, error) {
 			return nil, err
 		}
 	}
-	if opts.keyFile != "" {
-		keyFile, err := ioutil.ReadFile(opts.keyFile)
+
+	if opts.keyFiles != "" {
+		keyFiles := strings.Split(opts.keyFiles, ",")
+		// TODO: Add dec-recipients
+		decryptCc, err := createDecryptCryptoConfig(keyFiles, []string{})
 		if err != nil {
 			return nil, err
 		}
 
-		encodedKey := b64.StdEncoding.EncodeToString(keyFile)
-		dcParams, err := utils.SortDecryptionKeys(encodedKey)
-		if err != nil {
-			return nil, err
-		}
-
-		cc := config.CryptoConfig{}
-		cc.DecryptConfig = &config.DecryptConfig{}
-
-		cc.DecryptConfig.Parameters = dcParams
-
-		ctx.CryptoConfig = &cc
+		ctx.CryptoConfig = &decryptCc
 	}
+
 	if opts.noCreds {
 		ctx.DockerAuthConfig = &types.DockerAuthConfig{}
 	}

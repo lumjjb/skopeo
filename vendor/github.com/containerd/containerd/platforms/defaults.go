@@ -14,27 +14,25 @@
    limitations under the License.
 */
 
-package enclib
+package platforms
 
 import (
-	"io"
+	"runtime"
+
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-type readerAtReader struct {
-	r   io.ReaderAt
-	off int64
+// DefaultString returns the default string specifier for the platform.
+func DefaultString() string {
+	return Format(DefaultSpec())
 }
 
-// ReaderFromReaderAt takes an io.ReaderAt and returns an io.Reader
-func ReaderFromReaderAt(r io.ReaderAt) io.Reader {
-	return &readerAtReader{
-		r:   r,
-		off: 0,
+// DefaultSpec returns the current platform's default platform specification.
+func DefaultSpec() specs.Platform {
+	return specs.Platform{
+		OS:           runtime.GOOS,
+		Architecture: runtime.GOARCH,
+		// The Variant field will be empty if arch != ARM.
+		Variant: cpuVariant,
 	}
-}
-
-func (rar *readerAtReader) Read(p []byte) (n int, err error) {
-	n, err = rar.r.ReadAt(p, rar.off)
-	rar.off += int64(n)
-	return n, err
 }

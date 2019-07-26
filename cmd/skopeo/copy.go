@@ -147,6 +147,7 @@ func (opts *copyOptions) run(args []string, stdout io.Writer) error {
 	if opts.quiet {
 		stdout = nil
 	}
+
 	_, err = copy.Image(ctx, policyContext, destRef, srcRef, &copy.Options{
 		RemoveSignatures:      opts.removeSignatures,
 		SignBy:                opts.signByFingerprint,
