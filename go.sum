@@ -58,8 +58,6 @@ github.com/gorilla/mux v0.0.0-20140926153814-e444e69cbd2e h1:nH09qCdJVZxw0nRVfm1
 github.com/gorilla/mux v0.0.0-20140926153814-e444e69cbd2e/go.mod h1:1lud6UwP+6orDFRuTfBEV8e9/aOM/c4fVVCaMa2zaAs=
 github.com/gotestyourself/gotestyourself v2.2.0+incompatible h1:AQwinXlbQR2HvPjQZOmDhRqsv5mZf+Jb1RnSLxcqZcI=
 github.com/gotestyourself/gotestyourself v2.2.0+incompatible/go.mod h1:zZKM6oeNM8k+FRljX1mnzVYeS8wiGgQyvST1/GafPbY=
-github.com/harche/image v1.5.2-0.20190719060034-bc39fc091a1a h1:A4oHAeg6Y1E5a5pFqEmDNcp6XBx8KpILJTsW89Dehf4=
-github.com/harche/image v1.5.2-0.20190719060034-bc39fc091a1a/go.mod h1:x2rzem46LM0aOLFqwcmGqVbpOIRSWkpG+sbCVfAJ9nw=
 github.com/imdario/mergo v0.0.0-20141206190957-6633656539c1 h1:FeeCi0I2Fu8kA8IXrdVPtGzym+mW9bzfj9f26EaES9k=
 github.com/imdario/mergo v0.0.0-20141206190957-6633656539c1/go.mod h1:2EnlNZ0deacrJVfApfmtdGgDfMuh/nq6Ok1EcJh5FfA=
 github.com/klauspost/compress v1.4.1 h1:8VMb5+0wMgdBykOV96DwNwKFQ+WTI4pzYURP99CcB9E=
@@ -73,6 +71,8 @@ github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORN
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0 h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
+github.com/lumjjb/image v1.5.2-0.20190726025605-f86aed13fd69 h1:Gew3tYkwHoNgeLJm9j/x/p6+IfiO7lrFa+59popbezA=
+github.com/lumjjb/image v1.5.2-0.20190726025605-f86aed13fd69/go.mod h1:vzJZenFjoFdM5+UKpRCDVFTYBKgV2Aug5RIkslUV6ao=
 github.com/mattn/go-isatty v0.0.4 h1:bnP0vzxcAdeI1zdubAl5PjU6zsERjGZb7raWodagDYs=
 github.com/mattn/go-isatty v0.0.4/go.mod h1:M+lRXTBqGeGNdLjl/ufCoiOlB5xdOkqRJdNxMWT7Zi4=
 github.com/mattn/go-shellwords v1.0.5 h1:JhhFTIOslh5ZsPrpa3Wdg8bF0WI3b44EMblmU9wIsXc=

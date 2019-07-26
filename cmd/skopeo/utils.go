@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"strings"
 
+	"github.com/containers/image/encryption/enclib/config"
+	"github.com/containers/image/encryption/enclib/utils"
 	"github.com/containers/image/transports/alltransports"
 	"github.com/containers/image/types"
 	"github.com/urfave/cli"
@@ -159,7 +161,17 @@ func (opts *imageOptions) newSystemContext() (*types.SystemContext, error) {
 		}
 
 		encodedKey := b64.StdEncoding.EncodeToString(keyFile)
-		ctx.DecryptParams = []string{encodedKey}
+		dcParams, err := utils.SortDecryptionKeys(encodedKey)
+		if err != nil {
+			return nil, err
+		}
+
+		cc := config.CryptoConfig{}
+		cc.DecryptConfig = &config.DecryptConfig{}
+
+		cc.DecryptConfig.Parameters = dcParams
+
+		ctx.CryptoConfig = &cc
 	}
 	if opts.noCreds {
 		ctx.DockerAuthConfig = &types.DockerAuthConfig{}

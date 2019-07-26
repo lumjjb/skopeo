@@ -146,12 +146,6 @@ func DecryptLayer(dc *config.DecryptConfig, encLayerReader io.Reader, desc ocisp
 	return commonDecryptLayer(encLayerReader, optsData)
 }
 
-// DecryptLayerKeyOptsData is used to check if we can unwrap the symmetric key
-// using given private keys required to decrypt the layer
-func DecryptLayerKeyOptsData(dc *config.DecryptConfig, desc ocispec.Descriptor) ([]byte, error) {
-	return decryptLayerKeyOptsData(dc, desc)
-}
-
 func decryptLayerKeyOptsData(dc *config.DecryptConfig, desc ocispec.Descriptor) ([]byte, error) {
 	privKeyGiven := false
 	for annotationsID, scheme := range keyWrapperAnnotations {
