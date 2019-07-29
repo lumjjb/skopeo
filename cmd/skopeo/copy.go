@@ -155,6 +155,7 @@ func (opts *copyOptions) run(args []string, stdout io.Writer) error {
 		SourceCtx:             sourceCtx,
 		DestinationCtx:        destinationCtx,
 		ForceManifestMIMEType: manifestType,
+        EncryptLayers: nil,
 	})
 	return err
 }

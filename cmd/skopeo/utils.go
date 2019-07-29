@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	//"github.com/containers/image/encryption/enclib/config"
+	encconfig "github.com/containers/image/encryption/enclib/config"
 	//encutils "github.com/containers/image/encryption/enclib/utils"
 	"github.com/containers/image/transports/alltransports"
 	"github.com/containers/image/types"
@@ -159,16 +159,55 @@ func (opts *imageOptions) newSystemContext() (*types.SystemContext, error) {
 		}
 	}
 
+	var decryptCc *encconfig.CryptoConfig
+    var ccs []encconfig.CryptoConfig
+
 	if opts.keyFiles != "" {
 		keyFiles := strings.Split(opts.keyFiles, ",")
 		// TODO: Add dec-recipients
-		decryptCc, err := createDecryptCryptoConfig(keyFiles, []string{})
+		dcc, err := createDecryptCryptoConfig(keyFiles, []string{})
 		if err != nil {
 			return nil, err
 		}
+        decryptCc = &dcc
+        ccs = append(ccs, dcc)
 
-		ctx.CryptoConfig = &decryptCc
 	}
+
+    if opts.recipients != "" {
+		keyFiles := strings.Split(opts.recipients, ",")
+		gpgRecipients, pubKeys, x509s, err := processRecipientKeys(keyFiles)
+		if err != nil {
+			return nil, err
+		}
+		encryptCcs := []encconfig.CryptoConfig{}
+
+        // TODO: support GPG
+        _ = gpgRecipients
+
+        // Create Encryption Crypto Config
+        pkcs7Cc, err := encconfig.EncryptWithPkcs7(x509s)
+        if err != nil {
+            return nil, err
+        }
+        encryptCcs = append(encryptCcs, pkcs7Cc)
+
+        jweCc, err := encconfig.EncryptWithJwe(pubKeys)
+        if err != nil {
+            return nil, err
+        }
+        encryptCcs = append(encryptCcs, jweCc)
+        ecc := encconfig.CombineCryptoConfigs(encryptCcs)
+        if decryptCc != nil {
+            ecc.EncryptConfig.AttachDecryptConfig(decryptCc.DecryptConfig)
+        }
+        ccs = append(ccs, ecc)
+	}
+
+    if len(ccs) > 0 {
+        cc := encconfig.CombineCryptoConfigs(ccs)
+        ctx.CryptoConfig = &cc
+    }
 
 	if opts.noCreds {
 		ctx.DockerAuthConfig = &types.DockerAuthConfig{}

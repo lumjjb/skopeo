@@ -138,8 +138,10 @@ type Options struct {
 	CheckAuthorization    bool
 	// If non-nil indicates that image should be encrypted.
 	EncryptConfig *encconfig.EncryptConfig
-	// EncryptLayers represents the list of layers to encrypt. If len==0, denotes encrypt all layers.
-	EncryptLayers []int
+	// EncryptLayers represents the list of layers to encrypt.
+	// If nil, don't encrypt any layers
+	// If non-nil and len==0, denotes encrypt all layers.
+	EncryptLayers *[]int
 }
 
 // Image copies image from srcRef to destRef, using policyContext to validate
@@ -526,11 +528,15 @@ func (ic *imageCopier) copyLayers(ctx context.Context) error {
 
 	// Create layer Encryption map
 	encLayerBitmap := map[int]bool{}
-	encryptOverride := len(ic.encryptLayers) == 0
-	totalLayers := len(srcInfos)
-	for _, l := range ic.encryptLayers {
-		// if layer is negative, it is reverse indexed.
-		encLayerBitmap[(totalLayers+l)%totalLayers] = true
+	var encryptAll bool
+	encryptLayers := ic.encryptLayers != nil
+	if ic.encryptLayers != nil {
+		encryptAll = len(ic.encryptLayers) == 0
+		totalLayers := len(srcInfos)
+		for _, l := range ic.encryptLayers {
+			// if layer is negative, it is reverse indexed.
+			encLayerBitmap[(totalLayers+l)%totalLayers] = true
+		}
 	}
 
 	func() { // A scope for defer
@@ -539,7 +545,7 @@ func (ic *imageCopier) copyLayers(ctx context.Context) error {
 
 		for i, srcLayer := range srcInfos {
 			copySemaphore.Acquire(ctx, 1)
-			toEncrypt := encryptOverride || encLayerBitmap[i]
+			toEncrypt := encryptLayers && (encryptAll || encLayerBitmap[i])
 			go copyLayerHelper(i, srcLayer, toEncrypt, progressPool)
 		}
 
@@ -855,6 +861,7 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 	// dest.PutBlob may detect that the layer already exists, in which case we don't
 	// read stream to the end, and validation does not happen.
 
+	var decrypted bool
 	var err error
 	if srcInfo.MediaType == manifest.DockerV2Schema2LayerGzipEncMediaType ||
 		srcInfo.MediaType == manifest.DockerV2Schema2LayerEncMediaType {
@@ -877,6 +884,13 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 
 		srcInfo.Digest = d
 		srcInfo.Size = -1
+		switch srcInfo.MediaType {
+		case manifest.DockerV2Schema2LayerGzipEncMediaType:
+			srcInfo.MediaType = ocispec.MediaTypeImageLayerGzip
+		case manifest.DockerV2Schema2LayerEncMediaType:
+			srcInfo.MediaType = ocispec.MediaTypeImageLayer
+		}
+		decrypted = true
 	}
 
 	skipDigestValidation := srcInfo.Digest == ""
@@ -935,35 +949,39 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 		compressionOperation = types.PreserveOriginal
 		inputInfo = srcInfo
 	}
-
-	// Perform image encryption for valid mediatypes if encryptConfig provided
-	// TODO: Provide ability to select layer for decryption
-	var encryptMediaType string
-	switch srcInfo.MediaType {
-	case manifest.DockerV2Schema2LayerMediaType, ocispec.MediaTypeImageLayerGzip:
-		encryptMediaType = manifest.DockerV2Schema2LayerGzipEncMediaType
-	case ocispec.MediaTypeImageLayer:
-		encryptMediaType = manifest.DockerV2Schema2LayerEncMediaType
+	if decrypted {
+		inputInfo.MediaType = srcInfo.MediaType
 	}
 
-	if encryptMediaType != "" && c.encryptConfig != nil {
-		desc := ocispec.Descriptor{
-			MediaType:   srcInfo.MediaType,
-			Digest:      srcInfo.Digest,
-			Size:        srcInfo.Size,
-			Annotations: srcInfo.Annotations,
+	// Perform image encryption for valid mediatypes if encryptConfig provided
+	if toEncrypt {
+		var encryptMediaType string
+		switch srcInfo.MediaType {
+		case manifest.DockerV2Schema2LayerMediaType, ocispec.MediaTypeImageLayerGzip:
+			encryptMediaType = manifest.DockerV2Schema2LayerGzipEncMediaType
+		case ocispec.MediaTypeImageLayer:
+			encryptMediaType = manifest.DockerV2Schema2LayerEncMediaType
 		}
 
-		s, annotations, err := enclib.EncryptLayer(c.encryptConfig, destStream, desc)
-		if err != nil {
-			return types.BlobInfo{}, errors.Wrapf(err, "Image authentication failed for the digest %+v", srcInfo.Digest)
-		}
+		if encryptMediaType != "" && c.encryptConfig != nil {
+			desc := ocispec.Descriptor{
+				MediaType:   srcInfo.MediaType,
+				Digest:      srcInfo.Digest,
+				Size:        srcInfo.Size,
+				Annotations: srcInfo.Annotations,
+			}
 
-		destStream = s
-		inputInfo.Digest = ""
-		inputInfo.Size = -1
-		inputInfo.Annotations = annotations
-		inputInfo.MediaType = encryptMediaType
+			s, annotations, err := enclib.EncryptLayer(c.encryptConfig, destStream, desc)
+			if err != nil {
+				return types.BlobInfo{}, errors.Wrapf(err, "Image authentication failed for the digest %+v", srcInfo.Digest)
+			}
+
+			destStream = s
+			inputInfo.Digest = ""
+			inputInfo.Size = -1
+			inputInfo.Annotations = annotations
+			inputInfo.MediaType = encryptMediaType
+		}
 	}
 
 	// === Report progress using the c.progress channel, if required.
@@ -981,6 +999,11 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 	uploadedInfo, err := c.dest.PutBlob(ctx, destStream, inputInfo, c.blobInfoCache, isConfig)
 	if err != nil {
 		return types.BlobInfo{}, errors.Wrap(err, "Error writing blob")
+	}
+
+	// TODO: Add checks for encryption logic
+	if decrypted {
+		uploadedInfo.MediaType = srcInfo.MediaType
 	}
 
 	// This is fairly horrible: the writer from getOriginalLayerCopyWriter wants to consumer
