@@ -75,4 +75,4 @@ require (
 	k8s.io/client-go v0.0.0-20181219152756-3dd551c0f083 // indirect
 )
 
-replace github.com/containers/image => github.com/lumjjb/image v1.5.2-0.20190729181450-dfe9044586c0
+replace github.com/containers/image => github.com/lumjjb/image v1.5.2-0.20190729211032-137ede3d391f
