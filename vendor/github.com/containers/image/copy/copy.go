@@ -121,7 +121,7 @@ type imageCopier struct {
 	checkAuthorization bool
 	decryptConfig      *encconfig.DecryptConfig
 	encryptConfig      *encconfig.EncryptConfig
-	encryptLayers      []int
+	encryptLayers      *[]int
 }
 
 // Options allows supplying non-default configuration modifying the behavior of CopyImage.
@@ -307,13 +307,16 @@ func (c *copier) copyOneImage(ctx context.Context, policyContext *signature.Poli
 
 	// Set up encryption structs
 	var (
-		ec *encconfig.EncryptConfig
+		//ec *encconfig.EncryptConfig
 		dc *encconfig.DecryptConfig
 	)
 	if options.SourceCtx.CryptoConfig != nil {
-		ec = options.SourceCtx.CryptoConfig.EncryptConfig
+		//ec = options.SourceCtx.CryptoConfig.EncryptConfig
 		dc = options.SourceCtx.CryptoConfig.DecryptConfig
 	}
+
+	encConfig := options.EncryptConfig
+	encLayers := options.EncryptLayers
 
 	ic := imageCopier{
 		c:               c,
@@ -323,7 +326,8 @@ func (c *copier) copyOneImage(ctx context.Context, policyContext *signature.Poli
 		canModifyManifest:  len(sigs) == 0 && !destIsDigestedReference,
 		checkAuthorization: options.CheckAuthorization,
 		decryptConfig:      dc,
-		encryptConfig:      ec,
+		encryptConfig:      encConfig,
+		encryptLayers:      encLayers,
 	}
 	// Ensure _this_ copy sees exactly the intended data when either processing a signed image or signing it.
 	// This may be too conservative, but for now, better safe than sorry, _especially_ on the SignBy path:
@@ -531,9 +535,9 @@ func (ic *imageCopier) copyLayers(ctx context.Context) error {
 	var encryptAll bool
 	encryptLayers := ic.encryptLayers != nil
 	if ic.encryptLayers != nil {
-		encryptAll = len(ic.encryptLayers) == 0
+		encryptAll = len(*ic.encryptLayers) == 0
 		totalLayers := len(srcInfos)
-		for _, l := range ic.encryptLayers {
+		for _, l := range *ic.encryptLayers {
 			// if layer is negative, it is reverse indexed.
 			encLayerBitmap[(totalLayers+l)%totalLayers] = true
 		}
@@ -954,6 +958,11 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 	}
 
 	// Perform image encryption for valid mediatypes if encryptConfig provided
+	var (
+		encryptAnnotations map[string]string
+		encryptMediaType   string
+		encrypted          bool
+	)
 	if toEncrypt {
 		var encryptMediaType string
 		switch srcInfo.MediaType {
@@ -964,16 +973,20 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 		}
 
 		if encryptMediaType != "" && c.encryptConfig != nil {
+			var annotations map[string]string
+			if !decrypted {
+				annotations = srcInfo.Annotations
+			}
 			desc := ocispec.Descriptor{
 				MediaType:   srcInfo.MediaType,
 				Digest:      srcInfo.Digest,
 				Size:        srcInfo.Size,
-				Annotations: srcInfo.Annotations,
+				Annotations: annotations,
 			}
 
 			s, annotations, err := enclib.EncryptLayer(c.encryptConfig, destStream, desc)
 			if err != nil {
-				return types.BlobInfo{}, errors.Wrapf(err, "Image authentication failed for the digest %+v", srcInfo.Digest)
+				return types.BlobInfo{}, errors.Wrapf(err, "Image encryption failed for the digest %+v", srcInfo.Digest)
 			}
 
 			destStream = s
@@ -981,6 +994,8 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 			inputInfo.Size = -1
 			inputInfo.Annotations = annotations
 			inputInfo.MediaType = encryptMediaType
+			encryptAnnotations = annotations
+			encrypted = true
 		}
 	}
 
@@ -1001,9 +1016,17 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 		return types.BlobInfo{}, errors.Wrap(err, "Error writing blob")
 	}
 
-	// TODO: Add checks for encryption logic
 	if decrypted {
 		uploadedInfo.MediaType = srcInfo.MediaType
+	}
+	if encrypted {
+		uploadedInfo.MediaType = encryptMediaType
+		if uploadedInfo.Annotations == nil {
+			uploadedInfo.Annotations = map[string]string{}
+		}
+		for k, v := range encryptAnnotations {
+			uploadedInfo.Annotations[k] = v
+		}
 	}
 
 	// This is fairly horrible: the writer from getOriginalLayerCopyWriter wants to consumer

@@ -30,38 +30,38 @@ github.com/containerd/containerd/log
 github.com/containerd/continuity/pathdriver
 # github.com/containers/buildah v1.8.4
 github.com/containers/buildah/pkg/unshare
-# github.com/containers/image v1.5.2-0.20190717062552-2178abd5f9b1 => github.com/lumjjb/image v1.5.2-0.20190729161930-875dcde92477
-github.com/containers/image/copy
-github.com/containers/image/directory
-github.com/containers/image/docker
+# github.com/containers/image v1.5.2-0.20190717062552-2178abd5f9b1 => github.com/lumjjb/image v1.5.2-0.20190729181450-dfe9044586c0
 github.com/containers/image/docker/reference
 github.com/containers/image/encryption/enclib
 github.com/containers/image/encryption/enclib/config
-github.com/containers/image/encryption/enclib/utils
 github.com/containers/image/image
 github.com/containers/image/manifest
 github.com/containers/image/pkg/blobinfocache
-github.com/containers/image/signature
-github.com/containers/image/storage
-github.com/containers/image/transports
-github.com/containers/image/transports/alltransports
-github.com/containers/image/types
 github.com/containers/image/pkg/compression
-github.com/containers/image/directory/explicitfilepath
-github.com/containers/image/docker/policyconfiguration
-github.com/containers/image/pkg/blobinfocache/none
-github.com/containers/image/pkg/docker/config
-github.com/containers/image/pkg/sysregistriesv2
-github.com/containers/image/pkg/tlsclientconfig
+github.com/containers/image/signature
+github.com/containers/image/transports
+github.com/containers/image/types
+github.com/containers/image/copy
+github.com/containers/image/directory
+github.com/containers/image/docker
+github.com/containers/image/encryption/enclib/utils
+github.com/containers/image/storage
+github.com/containers/image/transports/alltransports
 github.com/containers/image/encryption/enclib/blockcipher
 github.com/containers/image/encryption/enclib/keywrap
 github.com/containers/image/encryption/enclib/keywrap/jwe
 github.com/containers/image/encryption/enclib/keywrap/pgp
 github.com/containers/image/encryption/enclib/keywrap/pkcs7
+github.com/containers/image/pkg/blobinfocache/none
 github.com/containers/image/pkg/strslice
 github.com/containers/image/pkg/blobinfocache/boltdb
 github.com/containers/image/pkg/blobinfocache/memory
 github.com/containers/image/version
+github.com/containers/image/directory/explicitfilepath
+github.com/containers/image/docker/policyconfiguration
+github.com/containers/image/pkg/docker/config
+github.com/containers/image/pkg/sysregistriesv2
+github.com/containers/image/pkg/tlsclientconfig
 github.com/containers/image/internal/tmpdir
 github.com/containers/image/docker/archive
 github.com/containers/image/docker/daemon
@@ -75,8 +75,8 @@ github.com/containers/image/docker/tarfile
 github.com/containers/image/oci/internal
 # github.com/containers/storage v1.12.10
 github.com/containers/storage/pkg/reexec
-github.com/containers/storage/pkg/idtools
 github.com/containers/storage/pkg/homedir
+github.com/containers/storage/pkg/idtools
 github.com/containers/storage
 github.com/containers/storage/pkg/archive
 github.com/containers/storage/pkg/ioutils

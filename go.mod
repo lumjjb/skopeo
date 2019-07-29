@@ -30,7 +30,7 @@ require (
 	github.com/gorilla/mux v0.0.0-20140926153814-e444e69cbd2e // indirect
 	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
 	github.com/imdario/mergo v0.0.0-20141206190957-6633656539c1 // indirect
-	github.com/klauspost/pgzip v1.2.1 // indirect
+	github.com/klauspost/pgzip v1.2.1
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/mattn/go-isatty v0.0.4 // indirect
 	github.com/mattn/go-shellwords v1.0.5 // indirect
@@ -58,12 +58,14 @@ require (
 	github.com/tchap/go-patricia v2.2.6+incompatible // indirect
 	github.com/urfave/cli v1.20.0
 	github.com/vbatts/tar-split v0.10.2 // indirect
-	github.com/vbauerster/mpb v3.4.0+incompatible // indirect
+	github.com/vbauerster/mpb v3.4.0+incompatible
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.1.0 // indirect
 	go.etcd.io/bbolt v1.3.3 // indirect
 	go4.org v0.0.0-20190218023631-ce4c26f7be8e // indirect
+	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	google.golang.org/grpc v1.22.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/square/go-jose.v2 v2.3.1 // indirect
@@ -73,4 +75,4 @@ require (
 	k8s.io/client-go v0.0.0-20181219152756-3dd551c0f083 // indirect
 )
 
-replace github.com/containers/image => github.com/lumjjb/image v1.5.2-0.20190729161930-875dcde92477
+replace github.com/containers/image => github.com/lumjjb/image v1.5.2-0.20190729181450-dfe9044586c0

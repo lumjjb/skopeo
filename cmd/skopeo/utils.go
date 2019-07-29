@@ -160,7 +160,7 @@ func (opts *imageOptions) newSystemContext() (*types.SystemContext, error) {
 	}
 
 	var decryptCc *encconfig.CryptoConfig
-    var ccs []encconfig.CryptoConfig
+	var ccs []encconfig.CryptoConfig
 
 	if opts.keyFiles != "" {
 		keyFiles := strings.Split(opts.keyFiles, ",")
@@ -169,12 +169,11 @@ func (opts *imageOptions) newSystemContext() (*types.SystemContext, error) {
 		if err != nil {
 			return nil, err
 		}
-        decryptCc = &dcc
-        ccs = append(ccs, dcc)
-
+		decryptCc = &dcc
+		ccs = append(ccs, dcc)
 	}
 
-    if opts.recipients != "" {
+	if opts.recipients != "" {
 		keyFiles := strings.Split(opts.recipients, ",")
 		gpgRecipients, pubKeys, x509s, err := processRecipientKeys(keyFiles)
 		if err != nil {
@@ -182,32 +181,32 @@ func (opts *imageOptions) newSystemContext() (*types.SystemContext, error) {
 		}
 		encryptCcs := []encconfig.CryptoConfig{}
 
-        // TODO: support GPG
-        _ = gpgRecipients
+		// TODO: support GPG
+		_ = gpgRecipients
 
-        // Create Encryption Crypto Config
-        pkcs7Cc, err := encconfig.EncryptWithPkcs7(x509s)
-        if err != nil {
-            return nil, err
-        }
-        encryptCcs = append(encryptCcs, pkcs7Cc)
+		// Create Encryption Crypto Config
+		pkcs7Cc, err := encconfig.EncryptWithPkcs7(x509s)
+		if err != nil {
+			return nil, err
+		}
+		encryptCcs = append(encryptCcs, pkcs7Cc)
 
-        jweCc, err := encconfig.EncryptWithJwe(pubKeys)
-        if err != nil {
-            return nil, err
-        }
-        encryptCcs = append(encryptCcs, jweCc)
-        ecc := encconfig.CombineCryptoConfigs(encryptCcs)
-        if decryptCc != nil {
-            ecc.EncryptConfig.AttachDecryptConfig(decryptCc.DecryptConfig)
-        }
-        ccs = append(ccs, ecc)
+		jweCc, err := encconfig.EncryptWithJwe(pubKeys)
+		if err != nil {
+			return nil, err
+		}
+		encryptCcs = append(encryptCcs, jweCc)
+		ecc := encconfig.CombineCryptoConfigs(encryptCcs)
+		if decryptCc != nil {
+			ecc.EncryptConfig.AttachDecryptConfig(decryptCc.DecryptConfig)
+		}
+		ccs = append(ccs, ecc)
 	}
 
-    if len(ccs) > 0 {
-        cc := encconfig.CombineCryptoConfigs(ccs)
-        ctx.CryptoConfig = &cc
-    }
+	if len(ccs) > 0 {
+		cc := encconfig.CombineCryptoConfigs(ccs)
+		ctx.CryptoConfig = &cc
+	}
 
 	if opts.noCreds {
 		ctx.DockerAuthConfig = &types.DockerAuthConfig{}
