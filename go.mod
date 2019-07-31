@@ -7,7 +7,7 @@ require (
 	github.com/Microsoft/go-winio v0.4.12 // indirect
 	github.com/Microsoft/hcsshim v0.8.6 // indirect
 	github.com/VividCortex/ewma v1.1.1 // indirect
-	github.com/containerd/containerd v1.2.7 // indirect
+	github.com/containerd/containerd v1.2.7
 	github.com/containerd/continuity v0.0.0-20180216233310-d8fb8589b0e8 // indirect
 	github.com/containers/buildah v1.8.4
 	github.com/containers/image v1.5.2-0.20190717062552-2178abd5f9b1
@@ -73,4 +73,4 @@ require (
 	k8s.io/client-go v0.0.0-20181219152756-3dd551c0f083 // indirect
 )
 
-replace github.com/containers/image => github.com/lumjjb/image v1.5.2-0.20190726025605-f86aed13fd69
+replace github.com/containers/image => github.com/lumjjb/image v1.5.2-0.20190729211032-137ede3d391f
