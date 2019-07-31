@@ -19,7 +19,6 @@ package blockcipher
 import (
 	"io"
 
-	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 )
 
@@ -36,16 +35,7 @@ const (
 // LayerBlockCipherOptions includes the information required to encrypt/decrypt
 // an image
 type LayerBlockCipherOptions struct {
-	// SymmetricKey represents the symmetric key used for encryption/decryption
-	// This field should be populated by Encrypt/Decrypt calls
-	SymmetricKey []byte `json:"symkey"`
-
-	// Digest is the digest of the original data for verification.
-	// This is NOT populated by Encrypt/Decrypt calls
-	Digest digest.Digest `json:"digest"`
-
-	// CipherOptions contains the cipher metadata used for encryption/decryption
-	// This field should be populated by Encrypt/Decrypt calls
+	SymmetricKey  []byte            `json:"symkey"`
 	CipherOptions map[string][]byte `json:"cipheroptions"`
 }
 

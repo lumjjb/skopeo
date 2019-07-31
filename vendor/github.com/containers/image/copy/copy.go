@@ -121,7 +121,7 @@ type imageCopier struct {
 	checkAuthorization bool
 	decryptConfig      *encconfig.DecryptConfig
 	encryptConfig      *encconfig.EncryptConfig
-	encryptLayers      *[]int
+	encryptLayers      []int
 }
 
 // Options allows supplying non-default configuration modifying the behavior of CopyImage.
@@ -138,10 +138,8 @@ type Options struct {
 	CheckAuthorization    bool
 	// If non-nil indicates that image should be encrypted.
 	EncryptConfig *encconfig.EncryptConfig
-	// EncryptLayers represents the list of layers to encrypt.
-	// If nil, don't encrypt any layers
-	// If non-nil and len==0, denotes encrypt all layers.
-	EncryptLayers *[]int
+	// EncryptLayers represents the list of layers to encrypt. If len==0, denotes encrypt all layers.
+	EncryptLayers []int
 }
 
 // Image copies image from srcRef to destRef, using policyContext to validate
@@ -263,10 +261,6 @@ func (c *copier) copyOneImage(ctx context.Context, policyContext *signature.Poli
 		return nil, errors.Wrapf(err, "Error initializing image from source %s", transports.ImageName(c.rawSource.Reference()))
 	}
 
-	if err = src.SupportsEncryption(ctx); err != nil && options.EncryptLayers != nil {
-		return nil, errors.Wrap(err, "Encryption requested but not supported by source image type")
-	}
-
 	// If the destination is a digested reference, make a note of that, determine what digest value we're
 	// expecting, and check that the source manifest matches it.
 	destIsDigestedReference := false
@@ -311,16 +305,13 @@ func (c *copier) copyOneImage(ctx context.Context, policyContext *signature.Poli
 
 	// Set up encryption structs
 	var (
-		//ec *encconfig.EncryptConfig
+		ec *encconfig.EncryptConfig
 		dc *encconfig.DecryptConfig
 	)
 	if options.SourceCtx.CryptoConfig != nil {
-		//ec = options.SourceCtx.CryptoConfig.EncryptConfig
+		ec = options.SourceCtx.CryptoConfig.EncryptConfig
 		dc = options.SourceCtx.CryptoConfig.DecryptConfig
 	}
-
-	encConfig := options.EncryptConfig
-	encLayers := options.EncryptLayers
 
 	ic := imageCopier{
 		c:               c,
@@ -330,8 +321,7 @@ func (c *copier) copyOneImage(ctx context.Context, policyContext *signature.Poli
 		canModifyManifest:  len(sigs) == 0 && !destIsDigestedReference,
 		checkAuthorization: options.CheckAuthorization,
 		decryptConfig:      dc,
-		encryptConfig:      encConfig,
-		encryptLayers:      encLayers,
+		encryptConfig:      ec,
 	}
 	// Ensure _this_ copy sees exactly the intended data when either processing a signed image or signing it.
 	// This may be too conservative, but for now, better safe than sorry, _especially_ on the SignBy path:
@@ -536,15 +526,11 @@ func (ic *imageCopier) copyLayers(ctx context.Context) error {
 
 	// Create layer Encryption map
 	encLayerBitmap := map[int]bool{}
-	var encryptAll bool
-	encryptLayers := ic.encryptLayers != nil
-	if ic.encryptLayers != nil {
-		encryptAll = len(*ic.encryptLayers) == 0
-		totalLayers := len(srcInfos)
-		for _, l := range *ic.encryptLayers {
-			// if layer is negative, it is reverse indexed.
-			encLayerBitmap[(totalLayers+l)%totalLayers] = true
-		}
+	encryptOverride := len(ic.encryptLayers) == 0
+	totalLayers := len(srcInfos)
+	for _, l := range ic.encryptLayers {
+		// if layer is negative, it is reverse indexed.
+		encLayerBitmap[(totalLayers+l)%totalLayers] = true
 	}
 
 	func() { // A scope for defer
@@ -553,7 +539,7 @@ func (ic *imageCopier) copyLayers(ctx context.Context) error {
 
 		for i, srcLayer := range srcInfos {
 			copySemaphore.Acquire(ctx, 1)
-			toEncrypt := encryptLayers && (encryptAll || encLayerBitmap[i])
+			toEncrypt := encryptOverride || encLayerBitmap[i]
 			go copyLayerHelper(i, srcLayer, toEncrypt, progressPool)
 		}
 
@@ -730,7 +716,7 @@ func (ic *imageCopier) copyLayer(ctx context.Context, srcInfo types.BlobInfo, to
 				Annotations: srcInfo.Annotations,
 			}
 
-			_, _, err := enclib.DecryptLayer(dc, nil, newDesc, true)
+			_, err := enclib.DecryptLayer(dc, nil, newDesc, true)
 			if err != nil {
 				return types.BlobInfo{}, "", errors.Wrapf(err, "Image authentication failed for the digest %+v", srcInfo.Digest)
 			}
@@ -869,7 +855,6 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 	// dest.PutBlob may detect that the layer already exists, in which case we don't
 	// read stream to the end, and validation does not happen.
 
-	var decrypted bool
 	var err error
 	if srcInfo.MediaType == manifest.DockerV2Schema2LayerGzipEncMediaType ||
 		srcInfo.MediaType == manifest.DockerV2Schema2LayerEncMediaType {
@@ -884,21 +869,13 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 			Annotations: srcInfo.Annotations,
 		}
 
-		var d digest.Digest
-		srcStream, d, err = enclib.DecryptLayer(dc, srcStream, newDesc, false)
+		srcStream, err = enclib.DecryptLayer(dc, srcStream, newDesc, false)
 		if err != nil {
 			return types.BlobInfo{}, errors.Wrapf(err, "Error decrypting layer %s", srcInfo.Digest)
 		}
 
-		srcInfo.Digest = d
+		srcInfo.Digest = ""
 		srcInfo.Size = -1
-		switch srcInfo.MediaType {
-		case manifest.DockerV2Schema2LayerGzipEncMediaType:
-			srcInfo.MediaType = ocispec.MediaTypeImageLayerGzip
-		case manifest.DockerV2Schema2LayerEncMediaType:
-			srcInfo.MediaType = ocispec.MediaTypeImageLayer
-		}
-		decrypted = true
 	}
 
 	skipDigestValidation := srcInfo.Digest == ""
@@ -957,49 +934,35 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 		compressionOperation = types.PreserveOriginal
 		inputInfo = srcInfo
 	}
-	if decrypted {
-		inputInfo.MediaType = srcInfo.MediaType
-	}
 
 	// Perform image encryption for valid mediatypes if encryptConfig provided
-	var (
-		encryptAnnotations map[string]string
-		encryptMediaType   string
-		encrypted          bool
-	)
-	if toEncrypt {
-		switch srcInfo.MediaType {
-		case manifest.DockerV2Schema2LayerMediaType, ocispec.MediaTypeImageLayerGzip:
-			encryptMediaType = manifest.DockerV2Schema2LayerGzipEncMediaType
-		case ocispec.MediaTypeImageLayer:
-			encryptMediaType = manifest.DockerV2Schema2LayerEncMediaType
+	// TODO: Provide ability to select layer for decryption
+	var encryptMediaType string
+	switch srcInfo.MediaType {
+	case manifest.DockerV2Schema2LayerGzipEncMediaType, ocispec.MediaTypeImageLayerGzip:
+		encryptMediaType = manifest.DockerV2Schema2LayerGzipEncMediaType
+	case manifest.DockerV2Schema2LayerMediaType, ocispec.MediaTypeImageLayer:
+		encryptMediaType = manifest.DockerV2Schema2LayerEncMediaType
+	}
+
+	if encryptMediaType != "" && c.encryptConfig != nil {
+		desc := ocispec.Descriptor{
+			MediaType:   srcInfo.MediaType,
+			Digest:      srcInfo.Digest,
+			Size:        srcInfo.Size,
+			Annotations: srcInfo.Annotations,
 		}
 
-		if encryptMediaType != "" && c.encryptConfig != nil {
-			var annotations map[string]string
-			if !decrypted {
-				annotations = srcInfo.Annotations
-			}
-			desc := ocispec.Descriptor{
-				MediaType:   srcInfo.MediaType,
-				Digest:      srcInfo.Digest,
-				Size:        srcInfo.Size,
-				Annotations: annotations,
-			}
-
-			s, annotations, err := enclib.EncryptLayer(c.encryptConfig, destStream, desc)
-			if err != nil {
-				return types.BlobInfo{}, errors.Wrapf(err, "Image encryption failed for the digest %+v", srcInfo.Digest)
-			}
-
-			destStream = s
-			inputInfo.Digest = ""
-			inputInfo.Size = -1
-			inputInfo.Annotations = annotations
-			inputInfo.MediaType = encryptMediaType
-			encryptAnnotations = annotations
-			encrypted = true
+		s, annotations, err := enclib.EncryptLayer(c.encryptConfig, destStream, desc)
+		if err != nil {
+			return types.BlobInfo{}, errors.Wrapf(err, "Image authentication failed for the digest %+v", srcInfo.Digest)
 		}
+
+		destStream = s
+		inputInfo.Digest = ""
+		inputInfo.Size = -1
+		inputInfo.Annotations = annotations
+		inputInfo.MediaType = encryptMediaType
 	}
 
 	// === Report progress using the c.progress channel, if required.
@@ -1017,19 +980,6 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 	uploadedInfo, err := c.dest.PutBlob(ctx, destStream, inputInfo, c.blobInfoCache, isConfig)
 	if err != nil {
 		return types.BlobInfo{}, errors.Wrap(err, "Error writing blob")
-	}
-
-	if decrypted {
-		uploadedInfo.MediaType = srcInfo.MediaType
-	}
-	if encrypted {
-		uploadedInfo.MediaType = encryptMediaType
-		if uploadedInfo.Annotations == nil {
-			uploadedInfo.Annotations = map[string]string{}
-		}
-		for k, v := range encryptAnnotations {
-			uploadedInfo.Annotations[k] = v
-		}
 	}
 
 	// This is fairly horrible: the writer from getOriginalLayerCopyWriter wants to consumer

@@ -7,7 +7,7 @@ require (
 	github.com/Microsoft/go-winio v0.4.12 // indirect
 	github.com/Microsoft/hcsshim v0.8.6 // indirect
 	github.com/VividCortex/ewma v1.1.1 // indirect
-	github.com/containerd/containerd v1.2.7
+	github.com/containerd/containerd v1.2.7 // indirect
 	github.com/containerd/continuity v0.0.0-20180216233310-d8fb8589b0e8 // indirect
 	github.com/containers/buildah v1.8.4
 	github.com/containers/image v1.5.2-0.20190717062552-2178abd5f9b1
@@ -30,7 +30,7 @@ require (
 	github.com/gorilla/mux v0.0.0-20140926153814-e444e69cbd2e // indirect
 	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
 	github.com/imdario/mergo v0.0.0-20141206190957-6633656539c1 // indirect
-	github.com/klauspost/pgzip v1.2.1
+	github.com/klauspost/pgzip v1.2.1 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/mattn/go-isatty v0.0.4 // indirect
 	github.com/mattn/go-shellwords v1.0.5 // indirect
@@ -58,14 +58,12 @@ require (
 	github.com/tchap/go-patricia v2.2.6+incompatible // indirect
 	github.com/urfave/cli v1.20.0
 	github.com/vbatts/tar-split v0.10.2 // indirect
-	github.com/vbauerster/mpb v3.4.0+incompatible
+	github.com/vbauerster/mpb v3.4.0+incompatible // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.1.0 // indirect
 	go.etcd.io/bbolt v1.3.3 // indirect
 	go4.org v0.0.0-20190218023631-ce4c26f7be8e // indirect
-	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
-	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	google.golang.org/grpc v1.22.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/square/go-jose.v2 v2.3.1 // indirect
@@ -75,4 +73,4 @@ require (
 	k8s.io/client-go v0.0.0-20181219152756-3dd551c0f083 // indirect
 )
 
-replace github.com/containers/image => github.com/lumjjb/image v1.5.2-0.20190729211032-137ede3d391f
+replace github.com/containers/image => github.com/lumjjb/image v1.5.2-0.20190726025605-f86aed13fd69
