@@ -5,8 +5,8 @@ import (
 	"io"
 	"strings"
 
+	"github.com/containers/image/encryption/enclib"
 	encconfig "github.com/containers/image/encryption/enclib/config"
-	//encutils "github.com/containers/image/encryption/enclib/utils"
 	"github.com/containers/image/transports/alltransports"
 	"github.com/containers/image/types"
 	"github.com/pkg/errors"
@@ -181,8 +181,21 @@ func (opts *imageOptions) newSystemContext() (*types.SystemContext, error) {
 		}
 		encryptCcs := []encconfig.CryptoConfig{}
 
-		// TODO: support GPG
-		_ = gpgRecipients
+		// Create GPG client with guessed GPG version and default homedir
+		gpgClient, err := enclib.NewGPGClient("", "")
+		gpgInstalled := err == nil
+		if len(gpgRecipients) > 0 && gpgInstalled {
+			gpgPubRingFile, err := gpgClient.ReadGPGPubRingFile()
+			if err != nil {
+				return nil, err
+			}
+
+			gpgCc, err := encconfig.EncryptWithGpg(gpgRecipients, gpgPubRingFile)
+			if err != nil {
+				return nil, err
+			}
+			encryptCcs = append(encryptCcs, gpgCc)
+		}
 
 		// Create Encryption Crypto Config
 		pkcs7Cc, err := encconfig.EncryptWithPkcs7(x509s)
