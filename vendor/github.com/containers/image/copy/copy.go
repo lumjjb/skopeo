@@ -14,11 +14,11 @@ import (
 	"time"
 
 	"github.com/containers/image/docker/reference"
-	"github.com/containers/image/encryption/enclib"
-	encconfig "github.com/containers/image/encryption/enclib/config"
 	"github.com/containers/image/image"
 	"github.com/containers/image/manifest"
 	"github.com/containers/image/pkg/blobinfocache"
+	"github.com/containers/ocicrypt"
+	encconfig "github.com/containers/ocicrypt/config"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"github.com/containers/image/pkg/compression"
@@ -43,6 +43,11 @@ type digestingReader struct {
 	validationSucceeded bool
 	skipValidation      bool
 }
+
+var (
+	// ErrDecryptParamsMissing is returned if there is missing decryption parameters
+	ErrDecryptParamsMissing = errors.New("Necessary DecryptParameters not present")
+)
 
 // maxParallelDownloads is used to limit the maxmimum number of parallel
 // downloads.  Let's follow Firefox by limiting it to 6.
@@ -263,7 +268,7 @@ func (c *copier) copyOneImage(ctx context.Context, policyContext *signature.Poli
 		return nil, errors.Wrapf(err, "Error initializing image from source %s", transports.ImageName(c.rawSource.Reference()))
 	}
 
-	if err = src.SupportsEncryption(ctx); err != nil && options.EncryptLayers != nil {
+	if !src.SupportsEncryption(ctx) && options.EncryptLayers != nil {
 		return nil, errors.Wrap(err, "Encryption requested but not supported by source image type")
 	}
 
@@ -657,15 +662,32 @@ func (c *copier) createProgressBar(pool *mpb.Progress, info types.BlobInfo, kind
 		prefix = prefix[:maxPrefixLen]
 	}
 
-	bar := pool.AddBar(info.Size,
-		mpb.BarClearOnComplete(),
-		mpb.PrependDecorators(
-			decor.Name(prefix),
-		),
-		mpb.AppendDecorators(
-			decor.OnComplete(decor.CountersKibiByte("%.1f / %.1f"), " "+onComplete),
-		),
-	)
+	// Use a normal progress bar when we know the size (i.e., size > 0).
+	// Otherwise, use a spinner to indicate that something's happening.
+	var bar *mpb.Bar
+	if info.Size > 0 {
+		bar = pool.AddBar(info.Size,
+			mpb.BarClearOnComplete(),
+			mpb.PrependDecorators(
+				decor.Name(prefix),
+			),
+			mpb.AppendDecorators(
+				decor.OnComplete(decor.CountersKibiByte("%.1f / %.1f"), " "+onComplete),
+			),
+		)
+	} else {
+		bar = pool.AddSpinner(info.Size,
+			mpb.SpinnerOnLeft,
+			mpb.BarClearOnComplete(),
+			mpb.SpinnerStyle([]string{".", "..", "...", "....", ""}),
+			mpb.PrependDecorators(
+				decor.Name(prefix),
+			),
+			mpb.AppendDecorators(
+				decor.OnComplete(decor.Name(""), " "+onComplete),
+			),
+		)
+	}
 	if c.progressOutput == ioutil.Discard {
 		c.Printf("Copying %s %s\n", kind, info.Digest)
 	}
@@ -730,7 +752,7 @@ func (ic *imageCopier) copyLayer(ctx context.Context, srcInfo types.BlobInfo, to
 				Annotations: srcInfo.Annotations,
 			}
 
-			_, _, err := enclib.DecryptLayer(dc, nil, newDesc, true)
+			_, _, err := ocicrypt.DecryptLayer(dc, nil, newDesc, true)
 			if err != nil {
 				return types.BlobInfo{}, "", errors.Wrapf(err, "Image authentication failed for the digest %+v", srcInfo.Digest)
 			}
@@ -875,7 +897,7 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 		srcInfo.MediaType == manifest.DockerV2Schema2LayerEncMediaType {
 
 		if c.decryptConfig == nil {
-			return types.BlobInfo{}, errors.New("Necessary DecryptParameters not present")
+			return types.BlobInfo{}, ErrDecryptParamsMissing
 		}
 
 		dc := c.decryptConfig
@@ -885,7 +907,7 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 		}
 
 		var d digest.Digest
-		srcStream, d, err = enclib.DecryptLayer(dc, srcStream, newDesc, false)
+		srcStream, d, err = ocicrypt.DecryptLayer(dc, srcStream, newDesc, false)
 		if err != nil {
 			return types.BlobInfo{}, errors.Wrapf(err, "Error decrypting layer %s", srcInfo.Digest)
 		}
@@ -963,9 +985,9 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 
 	// Perform image encryption for valid mediatypes if encryptConfig provided
 	var (
-		encryptAnnotations map[string]string
-		encryptMediaType   string
-		encrypted          bool
+		encryptMediaType string
+		encrypted        bool
+		finalizer        ocicrypt.EncryptLayerFinalizer
 	)
 	if toEncrypt {
 		switch srcInfo.MediaType {
@@ -987,17 +1009,16 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 				Annotations: annotations,
 			}
 
-			s, annotations, err := enclib.EncryptLayer(c.encryptConfig, destStream, desc)
+			s, fin, err := ocicrypt.EncryptLayer(c.encryptConfig, destStream, desc)
 			if err != nil {
 				return types.BlobInfo{}, errors.Wrapf(err, "Image encryption failed for the digest %+v", srcInfo.Digest)
 			}
 
 			destStream = s
+			finalizer = fin
 			inputInfo.Digest = ""
 			inputInfo.Size = -1
-			inputInfo.Annotations = annotations
 			inputInfo.MediaType = encryptMediaType
-			encryptAnnotations = annotations
 			encrypted = true
 		}
 	}
@@ -1023,6 +1044,10 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 		uploadedInfo.MediaType = srcInfo.MediaType
 	}
 	if encrypted {
+		encryptAnnotations, err := finalizer()
+		if err != nil {
+			return types.BlobInfo{}, errors.Wrap(err, "Unable to finalize encryption")
+		}
 		uploadedInfo.MediaType = encryptMediaType
 		if uploadedInfo.Annotations == nil {
 			uploadedInfo.Annotations = map[string]string{}

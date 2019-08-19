@@ -30,38 +30,30 @@ github.com/containerd/containerd/log
 github.com/containerd/continuity/pathdriver
 # github.com/containers/buildah v1.8.4
 github.com/containers/buildah/pkg/unshare
-# github.com/containers/image v1.5.2-0.20190717062552-2178abd5f9b1 => github.com/lumjjb/image v1.5.2-0.20190729211032-137ede3d391f
-github.com/containers/image/copy
-github.com/containers/image/directory
-github.com/containers/image/docker
+# github.com/containers/image v1.5.2-0.20190717062552-2178abd5f9b1 => github.com/lumjjb/image v1.5.2-0.20190815153729-25b2de6fb088
 github.com/containers/image/docker/reference
-github.com/containers/image/encryption/enclib
-github.com/containers/image/encryption/enclib/config
-github.com/containers/image/encryption/enclib/utils
 github.com/containers/image/image
 github.com/containers/image/manifest
 github.com/containers/image/pkg/blobinfocache
-github.com/containers/image/signature
-github.com/containers/image/storage
-github.com/containers/image/transports
-github.com/containers/image/transports/alltransports
-github.com/containers/image/types
 github.com/containers/image/pkg/compression
-github.com/containers/image/directory/explicitfilepath
-github.com/containers/image/docker/policyconfiguration
+github.com/containers/image/signature
+github.com/containers/image/transports
+github.com/containers/image/types
+github.com/containers/image/copy
+github.com/containers/image/directory
+github.com/containers/image/docker
+github.com/containers/image/storage
+github.com/containers/image/transports/alltransports
 github.com/containers/image/pkg/blobinfocache/none
-github.com/containers/image/pkg/docker/config
-github.com/containers/image/pkg/sysregistriesv2
-github.com/containers/image/pkg/tlsclientconfig
-github.com/containers/image/encryption/enclib/blockcipher
-github.com/containers/image/encryption/enclib/keywrap
-github.com/containers/image/encryption/enclib/keywrap/jwe
-github.com/containers/image/encryption/enclib/keywrap/pgp
-github.com/containers/image/encryption/enclib/keywrap/pkcs7
 github.com/containers/image/pkg/strslice
 github.com/containers/image/pkg/blobinfocache/boltdb
 github.com/containers/image/pkg/blobinfocache/memory
 github.com/containers/image/version
+github.com/containers/image/directory/explicitfilepath
+github.com/containers/image/docker/policyconfiguration
+github.com/containers/image/pkg/docker/config
+github.com/containers/image/pkg/sysregistriesv2
+github.com/containers/image/pkg/tlsclientconfig
 github.com/containers/image/internal/tmpdir
 github.com/containers/image/docker/archive
 github.com/containers/image/docker/daemon
@@ -71,12 +63,22 @@ github.com/containers/image/openshift
 github.com/containers/image/ostree
 github.com/containers/image/tarball
 github.com/containers/image/pkg/blobinfocache/internal/prioritize
+github.com/containers/image/pkg/keyctl
 github.com/containers/image/docker/tarfile
 github.com/containers/image/oci/internal
+# github.com/containers/ocicrypt v0.0.0-20190816175639-7121e75b8178
+github.com/containers/ocicrypt
+github.com/containers/ocicrypt/config
+github.com/containers/ocicrypt/utils
+github.com/containers/ocicrypt/blockcipher
+github.com/containers/ocicrypt/keywrap
+github.com/containers/ocicrypt/keywrap/jwe
+github.com/containers/ocicrypt/keywrap/pgp
+github.com/containers/ocicrypt/keywrap/pkcs7
 # github.com/containers/storage v1.12.10
 github.com/containers/storage/pkg/reexec
-github.com/containers/storage/pkg/idtools
 github.com/containers/storage/pkg/homedir
+github.com/containers/storage/pkg/idtools
 github.com/containers/storage
 github.com/containers/storage/pkg/archive
 github.com/containers/storage/pkg/ioutils
@@ -194,19 +196,13 @@ github.com/kr/text
 github.com/mattn/go-isatty
 # github.com/mattn/go-shellwords v1.0.5
 github.com/mattn/go-shellwords
-# github.com/miscreant/miscreant-go v0.0.0-20190615163012-4f5dc8c406f6
-github.com/miscreant/miscreant-go
-# github.com/miscreant/miscreant.go v0.0.0-20190615163012-4f5dc8c406f6
-github.com/miscreant/miscreant.go/block
-github.com/miscreant/miscreant.go/cmac
-github.com/miscreant/miscreant.go/pmac
 # github.com/mistifyio/go-zfs v0.0.0-20160425201758-22c9b32c84eb
 github.com/mistifyio/go-zfs
 # github.com/mtrmac/gpgme v0.0.0-20170102180018-b2432428689c
 github.com/mtrmac/gpgme
-# github.com/opencontainers/go-digest v0.0.0-20180430190053-c9281466c8b2
+# github.com/opencontainers/go-digest v1.0.0-rc1
 github.com/opencontainers/go-digest
-# github.com/opencontainers/image-spec v0.0.0-20180918080442-7b1e489870ac
+# github.com/opencontainers/image-spec v1.0.1
 github.com/opencontainers/image-spec/specs-go/v1
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/schema
@@ -227,14 +223,14 @@ github.com/ostreedev/ostree-go/pkg/otbuiltin
 github.com/pborman/uuid
 # github.com/pkg/errors v0.8.1
 github.com/pkg/errors
-# github.com/pmezard/go-difflib v0.0.0-20181226105442-5d4384ee4fb2
+# github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
 # github.com/pquerna/ffjson v0.0.0-20171002144729-d49c2bc1aa13
 github.com/pquerna/ffjson/fflib/v1
 github.com/pquerna/ffjson/fflib/v1/internal
 # github.com/sirupsen/logrus v1.0.0
 github.com/sirupsen/logrus
-# github.com/stretchr/testify v1.1.3
+# github.com/stretchr/testify v1.3.0
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
 # github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2
@@ -265,7 +261,7 @@ github.com/xeipuuv/gojsonreference
 github.com/xeipuuv/gojsonschema
 # go4.org v0.0.0-20190218023631-ce4c26f7be8e
 go4.org/errorutil
-# golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
+# golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
 golang.org/x/crypto/ssh/terminal
 golang.org/x/crypto/openpgp
 golang.org/x/crypto/openpgp/packet
@@ -277,7 +273,7 @@ golang.org/x/crypto/openpgp/elgamal
 golang.org/x/crypto/ed25519
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/ed25519/internal/edwards25519
-# golang.org/x/net v0.0.0-20190311183353-d8887717615a
+# golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3
 golang.org/x/net/context
 golang.org/x/net/http2
 golang.org/x/net/proxy
@@ -288,7 +284,7 @@ golang.org/x/net/idna
 golang.org/x/net/internal/socks
 # golang.org/x/sync v0.0.0-20190423024810-112230192c58
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a
+# golang.org/x/sys v0.0.0-20190412213103-97732733099d
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 # golang.org/x/text v0.3.0
