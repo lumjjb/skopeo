@@ -8,10 +8,10 @@ import (
 
 	"github.com/containers/image/copy"
 	"github.com/containers/image/docker/reference"
-	encconfig "github.com/containers/image/encryption/enclib/config"
 	"github.com/containers/image/manifest"
 	"github.com/containers/image/transports"
 	"github.com/containers/image/transports/alltransports"
+	encconfig "github.com/containers/ocicrypt/config"
 	imgspecv1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/urfave/cli"
 )
@@ -157,9 +157,6 @@ func (opts *copyOptions) run(args []string, stdout io.Writer) error {
 			encConfig = destinationCtx.CryptoConfig.EncryptConfig
 		}
 	}
-
-	fmt.Printf("EncLayers: %v\n", encLayers)
-	fmt.Printf("EncConfig : %v\n", encConfig)
 
 	_, err = copy.Image(ctx, policyContext, destRef, srcRef, &copy.Options{
 		RemoveSignatures:      opts.removeSignatures,

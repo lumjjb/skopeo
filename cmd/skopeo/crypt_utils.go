@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/containerd/containerd/platforms"
-	encryption "github.com/containers/image/encryption/enclib"
-	encconfig "github.com/containers/image/encryption/enclib/config"
-	encutils "github.com/containers/image/encryption/enclib/utils"
+	encryption "github.com/containers/ocicrypt"
+	encconfig "github.com/containers/ocicrypt/config"
+	encutils "github.com/containers/ocicrypt/utils"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -185,15 +185,15 @@ func createDecryptCryptoConfig(keys []string, decRecipients []string) (encconfig
 		return encconfig.CryptoConfig{}, err
 	}
 
-    if len(gpgSecretKeyRingFiles) > 0 {
-			gpgCc, err := encconfig.DecryptWithGpgPrivKeys(gpgSecretKeyRingFiles, gpgSecretKeyPasswords)
-			if err != nil {
-				return encconfig.CryptoConfig{}, err
-			}
-			ccs = append(ccs, gpgCc)
-    }
+	if len(gpgSecretKeyRingFiles) > 0 {
+		gpgCc, err := encconfig.DecryptWithGpgPrivKeys(gpgSecretKeyRingFiles, gpgSecretKeyPasswords)
+		if err != nil {
+			return encconfig.CryptoConfig{}, err
+		}
+		ccs = append(ccs, gpgCc)
+	}
 
-    /* TODO: Add in GPG client query for secret keys in the future.
+	/* TODO: Add in GPG client query for secret keys in the future.
 	_, err = createGPGClient(context)
 	gpgInstalled := err == nil
 	if gpgInstalled {
@@ -219,7 +219,7 @@ func createDecryptCryptoConfig(keys []string, decRecipients []string) (encconfig
 
 		}
 	}
-    */
+	*/
 
 	x509sCc, err := encconfig.DecryptWithX509s(x509s)
 	if err != nil {
@@ -235,7 +235,6 @@ func createDecryptCryptoConfig(keys []string, decRecipients []string) (encconfig
 
 	return encconfig.CombineCryptoConfigs(ccs), nil
 }
-
 
 // parsePlatformArray parses an array of specifiers and converts them into an array of specs.Platform
 func parsePlatformArray(specifiers []string) ([]ocispec.Platform, error) {

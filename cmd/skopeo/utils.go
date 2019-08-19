@@ -5,10 +5,10 @@ import (
 	"io"
 	"strings"
 
-	"github.com/containers/image/encryption/enclib"
-	encconfig "github.com/containers/image/encryption/enclib/config"
 	"github.com/containers/image/transports/alltransports"
 	"github.com/containers/image/types"
+	"github.com/containers/ocicrypt"
+	encconfig "github.com/containers/ocicrypt/config"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -182,7 +182,7 @@ func (opts *imageOptions) newSystemContext() (*types.SystemContext, error) {
 		encryptCcs := []encconfig.CryptoConfig{}
 
 		// Create GPG client with guessed GPG version and default homedir
-		gpgClient, err := enclib.NewGPGClient("", "")
+		gpgClient, err := ocicrypt.NewGPGClient("", "")
 		gpgInstalled := err == nil
 		if len(gpgRecipients) > 0 && gpgInstalled {
 			gpgPubRingFile, err := gpgClient.ReadGPGPubRingFile()
