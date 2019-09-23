@@ -11,6 +11,8 @@ import (
 	"github.com/containers/image/v4/manifest"
 	"github.com/containers/image/v4/transports"
 	"github.com/containers/image/v4/transports/alltransports"
+	encconfig "github.com/containers/ocicrypt/config"
+	enchelpers "github.com/containers/ocicrypt/helpers"
 	imgspecv1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/urfave/cli"
 )
@@ -24,7 +26,8 @@ type copyOptions struct {
 	signByFingerprint string          // Sign the image using a GPG key with the specified fingerprint
 	format            optionalString  // Force conversion of the image to a specified format
 	quiet             bool            // Suppress output information when copying images
-
+	encryptionKeys    cli.StringSlice // Keys needed to encrypt the image
+	decryptionKeys    cli.StringSlice // Keys needed to decrypt the image
 }
 
 func copyCmd(global *globalOptions) cli.Command {
@@ -76,6 +79,16 @@ func copyCmd(global *globalOptions) cli.Command {
 				Name:  "format, f",
 				Usage: "`MANIFEST TYPE` (oci, v2s1, or v2s2) to use when saving image to directory using the 'dir:' transport (default is manifest type of source)",
 				Value: newOptionalStringValue(&opts.format),
+			},
+			cli.StringSliceFlag{
+				Name:  "encryption-key",
+				Usage: "Key with the encryption protocol to use needed to encrypt the image (e.g. jwe:/path/to/key.pem)",
+				Value: &opts.encryptionKeys,
+			},
+			cli.StringSliceFlag{
+				Name:  "decryption-key",
+				Usage: "Key needed to decrypt the image",
+				Value: &opts.decryptionKeys,
 			},
 		}, sharedFlags...), srcFlags...), destFlags...),
 	}
@@ -147,6 +160,52 @@ func (opts *copyOptions) run(args []string, stdout io.Writer) error {
 	if opts.quiet {
 		stdout = nil
 	}
+
+	var ccs []encconfig.CryptoConfig
+
+	if len(opts.encryptionKeys.Value()) > 0 {
+		// encryption
+		if len(opts.decryptionKeys.Value()) > 0 {
+			return fmt.Errorf("--encryption-key and --decryption-key cannot be specified together")
+		}
+
+		encryptionKeys := opts.encryptionKeys.Value()
+		ecc, err := enchelpers.CreateCryptoConfig(encryptionKeys, []string{})
+		if err != nil {
+			return err
+		}
+		ccs = append(ccs, ecc)
+	}
+
+	if len(opts.decryptionKeys.Value()) > 0 {
+		// decryption
+		if len(opts.encryptionKeys.Value()) > 0 {
+			return fmt.Errorf("--encryption-key and --decryption-key cannot be specified together")
+		}
+		decryptionKeys := opts.decryptionKeys.Value()
+		dcc, err := enchelpers.CreateCryptoConfig([]string{}, decryptionKeys)
+		if err != nil {
+			return err
+		}
+		ccs = append(ccs, dcc)
+	}
+
+	var encConfig *encconfig.EncryptConfig
+	var encLayers *[]int
+	if len(ccs) > 0 {
+		cc := encconfig.CombineCryptoConfigs(ccs)
+		if len(opts.decryptionKeys.Value()) > 0 {
+			sourceCtx.CryptoConfig = &cc
+			destinationCtx.CryptoConfig = nil
+		}
+
+		if len(opts.encryptionKeys.Value()) > 0 {
+			encLayers = &[]int{}
+			encConfig = cc.EncryptConfig
+			sourceCtx.CryptoConfig = nil
+		}
+	}
+
 	_, err = copy.Image(ctx, policyContext, destRef, srcRef, &copy.Options{
 		RemoveSignatures:      opts.removeSignatures,
 		SignBy:                opts.signByFingerprint,
@@ -154,6 +213,8 @@ func (opts *copyOptions) run(args []string, stdout io.Writer) error {
 		SourceCtx:             sourceCtx,
 		DestinationCtx:        destinationCtx,
 		ForceManifestMIMEType: manifestType,
+		EncryptLayers:         encLayers,
+		EncryptConfig:         encConfig,
 	})
 	return err
 }
