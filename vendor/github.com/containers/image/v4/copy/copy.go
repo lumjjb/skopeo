@@ -115,8 +115,8 @@ type copier struct {
 	copyInParallel    bool
 	compressionFormat compression.Algorithm
 	compressionLevel  *int
-	decryptConfig     *encconfig.DecryptConfig
-	encryptConfig     *encconfig.EncryptConfig
+	ociDecryptConfig  *encconfig.DecryptConfig
+	ociEncryptConfig  *encconfig.EncryptConfig
 }
 
 // imageCopier tracks state specific to a single image (possibly an item of a manifest list)
@@ -127,10 +127,9 @@ type imageCopier struct {
 	diffIDsAreNeeded   bool
 	canModifyManifest  bool
 	canSubstituteBlobs bool
-	checkAuthorization bool
-	decryptConfig      *encconfig.DecryptConfig
-	encryptConfig      *encconfig.EncryptConfig
-	encryptLayers      *[]int
+	ociDecryptConfig   *encconfig.DecryptConfig
+	ociEncryptConfig   *encconfig.EncryptConfig
+	ociEncryptLayers   *[]int
 }
 
 // Options allows supplying non-default configuration modifying the behavior of CopyImage.
@@ -144,23 +143,20 @@ type Options struct {
 	Progress         chan types.ProgressProperties // Reported to when ProgressInterval has arrived for a single artifact+offset.
 	// manifest MIME type of image set by user. "" is default and means use the autodetection to the the manifest MIME type
 	ForceManifestMIMEType string
-	// CheckAuthorization is an indication if the image does not need to be decrypted, but only
-	// requires checking if the it can be decrypted.
-	// This is an optimization for cached images to see if provided keys have the authorization
-	// to use the cached content without having to decrypt the layers again.
-	CheckAuthorization bool
 	// If EncryptConfig is non-nil, it indicates that an image should be encrypted.
 	// The encryption options is derived from the construction of EncryptConfig object.
 	// Note: During initial encryption process of a layer, the resultant digest is not known
 	// during creation, so newDigestingReader has to be set with validateDigest = false
-	EncryptConfig *encconfig.EncryptConfig
-
+	OciEncryptConfig *encconfig.EncryptConfig
 	// EncryptLayers represents the list of layers to encrypt.
 	// If nil, don't encrypt any layers.
 	// If non-nil and len==0, denotes encrypt all layers.
 	// integers in the slice represent 0-indexed layer indices, with support for negative
 	// indexing. i.e. 0 is the first layer, -1 is the last (top-most) layer.
-	EncryptLayers *[]int
+	OciEncryptLayers *[]int
+	// DecryptConfig contains the config that can be used to decrypt an image if it is
+	// encrypted
+	OciDecryptConfig *encconfig.DecryptConfig
 }
 
 // Image copies image from srcRef to destRef, using policyContext to validate
@@ -297,8 +293,13 @@ func (c *copier) copyOneImage(ctx context.Context, policyContext *signature.Poli
 		return nil, errors.Wrapf(err, "Error initializing image from source %s", transports.ImageName(c.rawSource.Reference()))
 	}
 
-	if options.EncryptLayers != nil && !src.SupportsEncryption(ctx) {
-		return nil, errors.New("Encryption requested but not supported by source image type")
+	// TODO: Remove src.SupportsEncryption call and interface once copyUpdatedConfigAndManifest does not depend on source Image manifest type
+	if options.OciEncryptLayers != nil && !src.SupportsEncryption(ctx) {
+		return nil, errors.Errorf("Encryption request but not supported by source transport %s", src.Reference().Transport().Name())
+	}
+
+	if options.OciEncryptLayers != nil && !supportsEncryption(c.dest) {
+		return nil, errors.Errorf("Encryption request but not supported by destination transport %s", c.dest.Reference().Transport().Name())
 	}
 
 	// If the destination is a digested reference, make a note of that, determine what digest value we're
@@ -343,26 +344,15 @@ func (c *copier) copyOneImage(ctx context.Context, policyContext *signature.Poli
 		}
 	}
 
-	// Set up encryption structs
-	var dc *encconfig.DecryptConfig
-
-	if options.SourceCtx != nil && options.SourceCtx.CryptoConfig != nil {
-		dc = options.SourceCtx.CryptoConfig.DecryptConfig
-	}
-
-	encConfig := options.EncryptConfig
-	encLayers := options.EncryptLayers
-
 	ic := imageCopier{
 		c:               c,
 		manifestUpdates: &types.ManifestUpdateOptions{InformationOnly: types.ManifestUpdateInformation{Destination: c.dest}},
 		src:             src,
 		// diffIDsAreNeeded is computed later
-		canModifyManifest:  len(sigs) == 0 && !destIsDigestedReference,
-		checkAuthorization: options.CheckAuthorization,
-		decryptConfig:      dc,
-		encryptConfig:      encConfig,
-		encryptLayers:      encLayers,
+		canModifyManifest: len(sigs) == 0 && !destIsDigestedReference,
+		ociDecryptConfig:  options.OciDecryptConfig,
+		ociEncryptConfig:  options.OciEncryptConfig,
+		ociEncryptLayers:  options.OciEncryptLayers,
 	}
 	// Ensure _this_ copy sees exactly the intended data when either processing a signed image or signing it.
 	// This may be too conservative, but for now, better safe than sorry, _especially_ on the SignBy path:
@@ -376,9 +366,11 @@ func (c *copier) copyOneImage(ctx context.Context, policyContext *signature.Poli
 		return nil, err
 	}
 
+	requiresOciEncryption := isEncrypted(src) || options.OciEncryptLayers != nil
+
 	// We compute preferredManifestMIMEType only to show it in error messages.
 	// Without having to add this context in an error message, we would be happy enough to know only that no conversion is needed.
-	preferredManifestMIMEType, otherManifestMIMETypeCandidates, err := ic.determineManifestConversion(ctx, c.dest.SupportedManifestMIMETypes(), options.ForceManifestMIMEType)
+	preferredManifestMIMEType, otherManifestMIMETypeCandidates, err := ic.determineManifestConversion(ctx, c.dest.SupportedManifestMIMETypes(), options.ForceManifestMIMEType, requiresOciEncryption)
 	if err != nil {
 		return nil, err
 	}
@@ -518,14 +510,12 @@ func (ic *imageCopier) copyLayers(ctx context.Context) error {
 	}
 	srcInfosUpdated := false
 	// If we only need to check authorization, no updates required.
-	if !ic.checkAuthorization {
-		if updatedSrcInfos != nil && !reflect.DeepEqual(srcInfos, updatedSrcInfos) {
-			if !ic.canModifyManifest {
-				return errors.Errorf("Internal error: copyLayers() needs to use an updated manifest but that was known to be forbidden")
-			}
-			srcInfos = updatedSrcInfos
-			srcInfosUpdated = true
+	if updatedSrcInfos != nil && !reflect.DeepEqual(srcInfos, updatedSrcInfos) {
+		if !ic.canModifyManifest {
+			return errors.Errorf("Internal error: copyLayers() needs to use an updated manifest but that was known to be forbidden")
 		}
+		srcInfos = updatedSrcInfos
+		srcInfosUpdated = true
 	}
 
 	type copyLayerData struct {
@@ -571,10 +561,10 @@ func (ic *imageCopier) copyLayers(ctx context.Context) error {
 	// Create layer Encryption map
 	encLayerBitmap := map[int]bool{}
 	var encryptAll bool
-	if ic.encryptLayers != nil {
-		encryptAll = len(*ic.encryptLayers) == 0
+	if ic.ociEncryptLayers != nil {
+		encryptAll = len(*ic.ociEncryptLayers) == 0
 		totalLayers := len(srcInfos)
-		for _, l := range *ic.encryptLayers {
+		for _, l := range *ic.ociEncryptLayers {
 			// if layer is negative, it is reverse indexed.
 			encLayerBitmap[(totalLayers+l)%totalLayers] = true
 		}
@@ -607,11 +597,6 @@ func (ic *imageCopier) copyLayers(ctx context.Context) error {
 		}
 		destInfos[i] = cld.destInfo
 		diffIDs[i] = cld.diffID
-	}
-
-	// If we only need to check authorization, no updates required.
-	if ic.checkAuthorization {
-		return nil
 	}
 
 	ic.manifestUpdates.InformationOnly.LayerInfos = destInfos
@@ -772,31 +757,9 @@ type diffIDResult struct {
 // copyLayer copies a layer with srcInfo (with known Digest and Annotations and possibly known Size) in src to dest, perhaps compressing it if canCompress,
 // and returns a complete blobInfo of the copied layer, and a value for LayerDiffIDs if diffIDIsNeeded
 func (ic *imageCopier) copyLayer(ctx context.Context, srcInfo types.BlobInfo, toEncrypt bool, pool *mpb.Progress) (types.BlobInfo, digest.Digest, error) {
-	// This is used to authenticate the encrypted images that are already
-	// present in the image cached. For every layer we will try to unwrap
-	// the symmetric key with the provided private keys. If we fail, we will
-	// not allow the image to be provisioned.
-	if ic.checkAuthorization {
-		if manifest.IsEncryptedLayer(srcInfo) {
-			if ic.decryptConfig == nil {
-				return types.BlobInfo{}, "", errors.New("image authentication failed: layer is encrypted, but no decryption key materials were provided")
-			}
-
-			newDesc := ocispec.Descriptor{
-				Annotations: srcInfo.Annotations,
-			}
-
-			_, _, err := ocicrypt.DecryptLayer(ic.decryptConfig, nil, newDesc, true)
-			if err != nil {
-				return types.BlobInfo{}, "", errors.Wrapf(err, "image authentication failed for the digest %+v", srcInfo.Digest)
-			}
-		}
-		return types.BlobInfo{}, "", nil
-	}
-
 	cachedDiffID := ic.c.blobInfoCache.UncompressedDigest(srcInfo.Digest) // May be ""
 	// Diffs are needed if we are encrypting an image
-	diffIDIsNeeded := ic.diffIDsAreNeeded && cachedDiffID == "" || ic.encryptConfig != nil
+	diffIDIsNeeded := ic.diffIDsAreNeeded && cachedDiffID == "" || ic.ociEncryptConfig != nil
 
 	// If we already have the blob, and we don't need to compute the diffID, then we don't need to read it from the source.
 	if !diffIDIsNeeded {
@@ -876,8 +839,8 @@ func (ic *imageCopier) copyLayerFromStream(ctx context.Context, srcStream io.Rea
 			return pipeWriter
 		}
 	}
-	ic.c.decryptConfig = ic.decryptConfig
-	ic.c.encryptConfig = ic.encryptConfig
+	ic.c.ociDecryptConfig = ic.ociDecryptConfig
+	ic.c.ociEncryptConfig = ic.ociEncryptConfig
 
 	blobInfo, err := ic.c.copyBlobFromStream(ctx, srcStream, srcInfo, getDiffIDRecorder, ic.canModifyManifest, false, toEncrypt, bar) // Sets err to nil on success
 	return blobInfo, diffIDChan, err
@@ -929,8 +892,8 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 
 	var decrypted bool
 	var err error
-	if manifest.IsEncryptedLayer(srcInfo) {
-		if c.decryptConfig == nil {
+	if isOciEncrypted(srcInfo.MediaType) {
+		if c.ociDecryptConfig == nil {
 			return types.BlobInfo{}, ErrDecryptParamsMissing
 		}
 
@@ -939,13 +902,18 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 		}
 
 		var d digest.Digest
-		srcStream, d, err = ocicrypt.DecryptLayer(c.decryptConfig, srcStream, newDesc, false)
+		srcStream, d, err = ocicrypt.DecryptLayer(c.ociDecryptConfig, srcStream, newDesc, false)
 		if err != nil {
 			return types.BlobInfo{}, errors.Wrapf(err, "Error decrypting layer %s", srcInfo.Digest)
 		}
 
 		srcInfo.Digest = d
 		srcInfo.Size = -1
+		for k := range srcInfo.Annotations {
+			if strings.HasPrefix(k, "org.opencontainers.image.enc") {
+				delete(srcInfo.Annotations, k)
+			}
+		}
 		decrypted = true
 	}
 
@@ -1029,19 +997,17 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 		inputInfo = srcInfo
 	}
 
-	// Perform image encryption for valid mediatypes if encryptConfig provided
+	// Perform image encryption for valid mediatypes if ociEncryptConfig provided
 	var (
-		encryptMediaType string
-		encrypted        bool
-		finalizer        ocicrypt.EncryptLayerFinalizer
+		encrypted bool
+		finalizer ocicrypt.EncryptLayerFinalizer
 	)
 	if toEncrypt {
-		encryptMediaType, err = manifest.GetEncryptedMediaType(srcInfo.MediaType)
-		if err != nil {
-			return types.BlobInfo{}, errors.Wrapf(err, "Error encrypting layer %s", srcInfo.Digest)
+		if decrypted {
+			return types.BlobInfo{}, errors.New("Unable to support both decryption and encryption in the same copy")
 		}
 
-		if encryptMediaType != "" && c.encryptConfig != nil {
+		if !isOciEncrypted(srcInfo.MediaType) && c.ociEncryptConfig != nil {
 			var annotations map[string]string
 			if !decrypted {
 				annotations = srcInfo.Annotations
@@ -1053,16 +1019,15 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 				Annotations: annotations,
 			}
 
-			s, fin, err := ocicrypt.EncryptLayer(c.encryptConfig, destStream, desc)
+			s, fin, err := ocicrypt.EncryptLayer(c.ociEncryptConfig, destStream, desc)
 			if err != nil {
-				return types.BlobInfo{}, errors.Wrapf(err, "Image encryption failed for the digest %+v", srcInfo.Digest)
+				return types.BlobInfo{}, errors.Wrapf(err, "Error encrypting blob %s", srcInfo.Digest)
 			}
 
 			destStream = s
 			finalizer = fin
 			inputInfo.Digest = ""
 			inputInfo.Size = -1
-			inputInfo.MediaType = encryptMediaType
 			encrypted = true
 		}
 	}
@@ -1093,18 +1058,7 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 	}
 	if decrypted {
 		uploadedInfo.CryptoOperation = types.Decrypt
-
-		// Ensure that encryption annotations are present in the new manifest
-		// to enable check authorization at a later time.
-		// TODO: Copy over only encryption related annotations
-		if uploadedInfo.Annotations == nil {
-			uploadedInfo.Annotations = map[string]string{}
-		}
-		for k, v := range srcInfo.Annotations {
-			uploadedInfo.Annotations[k] = v
-		}
-	}
-	if encrypted {
+	} else if encrypted {
 		encryptAnnotations, err := finalizer()
 		if err != nil {
 			return types.BlobInfo{}, errors.Wrap(err, "Unable to finalize encryption")
@@ -1171,4 +1125,40 @@ func (c *copier) compressGoroutine(dest *io.PipeWriter, src io.Reader, compressi
 	buf := make([]byte, compressionBufferSize)
 
 	_, err = io.CopyBuffer(compressor, src, buf) // Sets err to nil, i.e. causes dest.Close()
+}
+
+// isOciEncrypted returns if a mediatype is encrypted
+func isOciEncrypted(mediatype string) bool {
+	return strings.HasSuffix(mediatype, "+encrypted")
+}
+
+// isEncrypted checks if an image is encrypted
+func isEncrypted(i types.Image) bool {
+	layers := i.LayerInfos()
+	for _, l := range layers {
+		if isOciEncrypted(l.MediaType) {
+			return true
+		}
+	}
+	return false
+}
+
+// supportsEncryption checks if the image destination supports use of encrypted images
+func supportsEncryption(dst types.ImageDestination) bool {
+	mimeTypes := dst.SupportedManifestMIMETypes()
+	if len(mimeTypes) == 0 {
+		return true
+	}
+
+	for _, m := range mimeTypes {
+		if manifestSupportsEncryption(m) {
+			return true
+		}
+	}
+	return false
+}
+
+// manifestSupportsEncryption returns if the manifest type supports encryption
+func manifestSupportsEncryption(m string) bool {
+	return m == ocispec.MediaTypeImageManifest
 }

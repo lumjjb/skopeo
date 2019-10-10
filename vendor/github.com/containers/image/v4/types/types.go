@@ -7,7 +7,6 @@ import (
 
 	"github.com/containers/image/v4/docker/reference"
 	compression "github.com/containers/image/v4/pkg/compression/types"
-	encconfig "github.com/containers/ocicrypt/config"
 	digest "github.com/opencontainers/go-digest"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
@@ -100,7 +99,7 @@ const (
 	// no compression or decompression.
 	PreserveOriginal LayerCompression = iota
 	// Decompress indicates the layer must be decompressed
-	Decompress
+	Decompress = iota + 1
 	// Compress indicates the layer must be compressed
 	Compress
 )
@@ -109,8 +108,9 @@ const (
 type LayerCrypto int
 
 const (
-	// None indicates the layer must be preserved, no encryption/decryption
-	None LayerCrypto = iota
+	// PreserveOriginalCrypto indicates the layer must be preserved, ie
+	// no encryption/decryption
+	PreserveOriginalCrypto LayerCrypto = iota
 	// Encrypt indicates the layer is encrypted
 	Encrypt
 	// Decrypt indicates the layer is decrypted
@@ -516,8 +516,6 @@ type SystemContext struct {
 	DockerInsecureSkipTLSVerify OptionalBool
 	// if nil, the library tries to parse ~/.docker/config.json to retrieve credentials
 	DockerAuthConfig *DockerAuthConfig
-	// if not nil, CryptoConfig will be used to encrypt/decrypt images
-	CryptoConfig *encconfig.CryptoConfig
 	// if not "", an User-Agent header is added to each request when contacting a registry.
 	DockerRegistryUserAgent string
 	// if true, a V1 ping attempt isn't done to give users a better error. Default is false.

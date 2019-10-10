@@ -30,7 +30,7 @@ github.com/containerd/containerd/log
 github.com/containerd/continuity/pathdriver
 # github.com/containers/buildah v1.8.4
 github.com/containers/buildah/pkg/unshare
-# github.com/containers/image/v4 v4.0.1 => github.com/lumjjb/image/v4 v4.0.0-20191004123545-97f3a51cda68
+# github.com/containers/image/v4 v4.0.1 => github.com/lumjjb/image/v4 v4.0.0-20191010165351-5c6abe04e068
 github.com/containers/image/v4/copy
 github.com/containers/image/v4/directory
 github.com/containers/image/v4/docker

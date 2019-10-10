@@ -90,8 +90,8 @@ github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORN
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0 h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
-github.com/lumjjb/image/v4 v4.0.0-20191004123545-97f3a51cda68 h1:myneGnDquVp/vrRbfpoGW+msHIuRkvXH6VlDMBlWEpc=
-github.com/lumjjb/image/v4 v4.0.0-20191004123545-97f3a51cda68/go.mod h1:n4ghUPsemNIhMH4lW6V09eSTPVvimj9yR8xuv8MBf1I=
+github.com/lumjjb/image/v4 v4.0.0-20191010165351-5c6abe04e068 h1:z81LWGhL3FeSHo2+xz/Ho+m12bPUtJnfnR5VbRNCP6s=
+github.com/lumjjb/image/v4 v4.0.0-20191010165351-5c6abe04e068/go.mod h1:n4ghUPsemNIhMH4lW6V09eSTPVvimj9yR8xuv8MBf1I=
 github.com/mattn/go-isatty v0.0.4 h1:bnP0vzxcAdeI1zdubAl5PjU6zsERjGZb7raWodagDYs=
 github.com/mattn/go-isatty v0.0.4/go.mod h1:M+lRXTBqGeGNdLjl/ufCoiOlB5xdOkqRJdNxMWT7Zi4=
 github.com/mattn/go-shellwords v1.0.5 h1:JhhFTIOslh5ZsPrpa3Wdg8bF0WI3b44EMblmU9wIsXc=

@@ -191,18 +191,17 @@ func (opts *copyOptions) run(args []string, stdout io.Writer) error {
 	}
 
 	var encConfig *encconfig.EncryptConfig
+	var decConfig *encconfig.DecryptConfig
 	var encLayers *[]int
 	if len(ccs) > 0 {
 		cc := encconfig.CombineCryptoConfigs(ccs)
 		if len(opts.decryptionKeys.Value()) > 0 {
-			sourceCtx.CryptoConfig = &cc
-			destinationCtx.CryptoConfig = nil
+			decConfig = cc.DecryptConfig
 		}
 
 		if len(opts.encryptionKeys.Value()) > 0 {
 			encLayers = &[]int{}
 			encConfig = cc.EncryptConfig
-			sourceCtx.CryptoConfig = nil
 		}
 	}
 
@@ -213,8 +212,9 @@ func (opts *copyOptions) run(args []string, stdout io.Writer) error {
 		SourceCtx:             sourceCtx,
 		DestinationCtx:        destinationCtx,
 		ForceManifestMIMEType: manifestType,
-		EncryptLayers:         encLayers,
-		EncryptConfig:         encConfig,
+		OciDecryptConfig:      decConfig,
+		OciEncryptLayers:      encLayers,
+		OciEncryptConfig:      encConfig,
 	})
 	return err
 }
