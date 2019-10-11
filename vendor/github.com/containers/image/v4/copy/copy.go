@@ -143,19 +143,19 @@ type Options struct {
 	Progress         chan types.ProgressProperties // Reported to when ProgressInterval has arrived for a single artifact+offset.
 	// manifest MIME type of image set by user. "" is default and means use the autodetection to the the manifest MIME type
 	ForceManifestMIMEType string
-	// If EncryptConfig is non-nil, it indicates that an image should be encrypted.
+	// If OciEncryptConfig is non-nil, it indicates that an image should be encrypted.
 	// The encryption options is derived from the construction of EncryptConfig object.
 	// Note: During initial encryption process of a layer, the resultant digest is not known
 	// during creation, so newDigestingReader has to be set with validateDigest = false
 	OciEncryptConfig *encconfig.EncryptConfig
-	// EncryptLayers represents the list of layers to encrypt.
+	// OciEncryptLayers represents the list of layers to encrypt.
 	// If nil, don't encrypt any layers.
 	// If non-nil and len==0, denotes encrypt all layers.
 	// integers in the slice represent 0-indexed layer indices, with support for negative
 	// indexing. i.e. 0 is the first layer, -1 is the last (top-most) layer.
 	OciEncryptLayers *[]int
-	// DecryptConfig contains the config that can be used to decrypt an image if it is
-	// encrypted
+	// OciDecryptConfig contains the config that can be used to decrypt an image if it is
+	// encrypted if non-nil. If nil, it does not attempt to decrypt an image.
 	OciDecryptConfig *encconfig.DecryptConfig
 }
 
@@ -377,6 +377,8 @@ func (c *copier) copyOneImage(ctx context.Context, policyContext *signature.Poli
 
 	// If src.UpdatedImageNeedsLayerDiffIDs(ic.manifestUpdates) will be true, it needs to be true by the time we get here.
 	ic.diffIDsAreNeeded = src.UpdatedImageNeedsLayerDiffIDs(*ic.manifestUpdates)
+	// If encrypted and decryption keys provided, we should try to decrypt
+	ic.diffIDsAreNeeded = ic.diffIDsAreNeeded || (isEncrypted(src) && ic.ociDecryptConfig != nil)
 
 	if err := ic.copyLayers(ctx); err != nil {
 		return nil, err
@@ -758,8 +760,8 @@ type diffIDResult struct {
 // and returns a complete blobInfo of the copied layer, and a value for LayerDiffIDs if diffIDIsNeeded
 func (ic *imageCopier) copyLayer(ctx context.Context, srcInfo types.BlobInfo, toEncrypt bool, pool *mpb.Progress) (types.BlobInfo, digest.Digest, error) {
 	cachedDiffID := ic.c.blobInfoCache.UncompressedDigest(srcInfo.Digest) // May be ""
-	// Diffs are needed if we are encrypting an image
-	diffIDIsNeeded := ic.diffIDsAreNeeded && cachedDiffID == "" || ic.ociEncryptConfig != nil
+	// Diffs are needed if we are encrypting an image or trying to decrypt an image
+	diffIDIsNeeded := ic.diffIDsAreNeeded && cachedDiffID == "" || toEncrypt || (isOciEncrypted(srcInfo.MediaType) && ic.ociDecryptConfig != nil)
 
 	// If we already have the blob, and we don't need to compute the diffID, then we don't need to read it from the source.
 	if !diffIDIsNeeded {
@@ -892,11 +894,7 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 
 	var decrypted bool
 	var err error
-	if isOciEncrypted(srcInfo.MediaType) {
-		if c.ociDecryptConfig == nil {
-			return types.BlobInfo{}, ErrDecryptParamsMissing
-		}
-
+	if isOciEncrypted(srcInfo.MediaType) && c.ociDecryptConfig != nil {
 		newDesc := ocispec.Descriptor{
 			Annotations: srcInfo.Annotations,
 		}
@@ -946,7 +944,12 @@ func (c *copier) copyBlobFromStream(ctx context.Context, srcStream io.Reader, sr
 	// === Deal with layer compression/decompression if necessary
 	var inputInfo types.BlobInfo
 	var compressionOperation types.LayerCompression
-	if canModifyBlob && c.dest.DesiredLayerCompression() == types.Compress && !isCompressed {
+	if canModifyBlob && isOciEncrypted(srcInfo.MediaType) {
+		// PreserveOriginal due to any compression not being able to be done on an encrypted blob unless decrypted
+		logrus.Debugf("Using original blob without modification for encrypted blob")
+		compressionOperation = types.PreserveOriginal
+		inputInfo = srcInfo
+	} else if canModifyBlob && c.dest.DesiredLayerCompression() == types.Compress && !isCompressed {
 		logrus.Debugf("Compressing blob on the fly")
 		compressionOperation = types.Compress
 		pipeReader, pipeWriter := io.Pipe()

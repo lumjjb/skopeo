@@ -99,7 +99,7 @@ const (
 	// no compression or decompression.
 	PreserveOriginal LayerCompression = iota
 	// Decompress indicates the layer must be decompressed
-	Decompress = iota + 1
+	Decompress
 	// Compress indicates the layer must be compressed
 	Compress
 )
