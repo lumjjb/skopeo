@@ -79,7 +79,7 @@ github.com/containers/image/v5/types
 github.com/containers/image/v5/version
 # github.com/containers/libtrust v0.0.0-20190913040956-14b96171aa3b
 github.com/containers/libtrust
-# github.com/containers/ocicrypt v0.0.0-20190930154801-b87a4a69c741
+# github.com/containers/ocicrypt v0.0.0-20200206222626-3c3f2f1f1820
 github.com/containers/ocicrypt
 github.com/containers/ocicrypt/blockcipher
 github.com/containers/ocicrypt/config
