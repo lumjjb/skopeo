@@ -23,5 +23,6 @@ require (
 	github.com/urfave/cli v1.22.1
 	github.com/vbauerster/mpb v3.4.0+incompatible // indirect
 	go4.org v0.0.0-20190218023631-ce4c26f7be8e // indirect
+	gopkg.in/square/go-jose.v2 v2.3.1
 	gopkg.in/yaml.v2 v2.2.8
 )

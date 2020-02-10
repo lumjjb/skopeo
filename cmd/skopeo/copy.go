@@ -12,6 +12,8 @@ import (
 	"github.com/containers/image/v5/transports"
 	"github.com/containers/image/v5/transports/alltransports"
 
+	"github.com/containers/skopeo/seclkeywrap"
+	"github.com/containers/ocicrypt"
 	encconfig "github.com/containers/ocicrypt/config"
 	enchelpers "github.com/containers/ocicrypt/helpers"
 	imgspecv1 "github.com/opencontainers/image-spec/specs-go/v1"
@@ -134,6 +136,10 @@ func (opts *copyOptions) run(args []string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
+
+        // Add custom keywrapper
+        ocicrypt.RegisterKeyWrapper("secl", seclkeywrap.NewKeyWrapper())
+
 
 	var manifestType string
 	if opts.format.present {
