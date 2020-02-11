@@ -12,10 +12,10 @@ import (
 	"github.com/containers/image/v5/transports"
 	"github.com/containers/image/v5/transports/alltransports"
 
-	"github.com/containers/skopeo/seclkeywrap"
 	"github.com/containers/ocicrypt"
 	encconfig "github.com/containers/ocicrypt/config"
 	enchelpers "github.com/containers/ocicrypt/helpers"
+	"github.com/containers/skopeo/seclkeywrap"
 	imgspecv1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/urfave/cli"
 )
@@ -137,10 +137,6 @@ func (opts *copyOptions) run(args []string, stdout io.Writer) error {
 		return err
 	}
 
-        // Add custom keywrapper
-        ocicrypt.RegisterKeyWrapper("secl", seclkeywrap.NewKeyWrapper())
-
-
 	var manifestType string
 	if opts.format.present {
 		switch opts.format.value {
@@ -186,26 +182,47 @@ func (opts *copyOptions) run(args []string, stdout io.Writer) error {
 	var encConfig *encconfig.EncryptConfig
 	var decConfig *encconfig.DecryptConfig
 
+	// Add custom keywrapper
+	ocicrypt.RegisterKeyWrapper("secl", seclkeywrap.NewKeyWrapper())
+
 	if len(opts.encryptionKeys.Value()) > 0 {
 		// encryption
 		encLayers = &[]int{}
 		encryptionKeys := opts.encryptionKeys.Value()
+
+		// Parse custom secl protocols and remove them from slice
+		seclEcc, err := seclkeywrap.CreateCryptoConfig(encryptionKeys, []string{})
+		if err != nil {
+			return fmt.Errorf("Invalid secl encryption parameters: %v", err)
+		}
+		encryptionKeys = seclkeywrap.FilterRecipients(encryptionKeys)
+
 		ecc, err := enchelpers.CreateCryptoConfig(encryptionKeys, []string{})
 		if err != nil {
 			return fmt.Errorf("Invalid encryption keys: %v", err)
 		}
-		cc := encconfig.CombineCryptoConfigs([]encconfig.CryptoConfig{ecc})
+
+		cc := encconfig.CombineCryptoConfigs([]encconfig.CryptoConfig{ecc, seclEcc})
 		encConfig = cc.EncryptConfig
 	}
 
 	if len(opts.decryptionKeys.Value()) > 0 {
 		// decryption
 		decryptionKeys := opts.decryptionKeys.Value()
+
+		// Parse custom protocols and remove them from slice
+		seclDcc, err := seclkeywrap.CreateCryptoConfig([]string{}, decryptionKeys)
+		if err != nil {
+			return fmt.Errorf("Invalid secl decryption parameters: %v", err)
+		}
+		decryptionKeys = seclkeywrap.FilterKeys(decryptionKeys)
+
 		dcc, err := enchelpers.CreateCryptoConfig([]string{}, decryptionKeys)
 		if err != nil {
 			return fmt.Errorf("Invalid decryption keys: %v", err)
 		}
-		cc := encconfig.CombineCryptoConfigs([]encconfig.CryptoConfig{dcc})
+
+		cc := encconfig.CombineCryptoConfigs([]encconfig.CryptoConfig{dcc, seclDcc})
 		decConfig = cc.DecryptConfig
 	}
 
