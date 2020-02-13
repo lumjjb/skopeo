@@ -6,11 +6,12 @@ require (
 	github.com/containers/buildah v1.13.1 // indirect
 	github.com/containers/common v0.1.4
 	github.com/containers/image/v5 v5.2.1
-	github.com/containers/ocicrypt v0.0.0-20200206222626-3c3f2f1f1820
+	github.com/containers/ocicrypt v0.0.0-20200210162441-0343cc6053fd
 	github.com/containers/storage v1.15.8
 	github.com/docker/docker v1.4.2-0.20191101170500-ac7306503d23
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/go-check/check v0.0.0-20180628173108-788fd7840127
+	github.com/lumjjb/seclkeywrap v0.0.0-20200213232257-f323c35282ec
 	github.com/opencontainers/go-digest v1.0.0-rc1
 	github.com/opencontainers/image-spec v1.0.2-0.20190823105129-775207bd45b6
 	github.com/opencontainers/image-tools v0.0.0-20170926011501-6d941547fa1d
@@ -23,6 +24,5 @@ require (
 	github.com/urfave/cli v1.22.1
 	github.com/vbauerster/mpb v3.4.0+incompatible // indirect
 	go4.org v0.0.0-20190218023631-ce4c26f7be8e // indirect
-	gopkg.in/square/go-jose.v2 v2.3.1
 	gopkg.in/yaml.v2 v2.2.8
 )

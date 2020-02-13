@@ -79,7 +79,7 @@ github.com/containers/image/v5/types
 github.com/containers/image/v5/version
 # github.com/containers/libtrust v0.0.0-20190913040956-14b96171aa3b
 github.com/containers/libtrust
-# github.com/containers/ocicrypt v0.0.0-20200206222626-3c3f2f1f1820
+# github.com/containers/ocicrypt v0.0.0-20200210162441-0343cc6053fd
 github.com/containers/ocicrypt
 github.com/containers/ocicrypt/blockcipher
 github.com/containers/ocicrypt/config
@@ -216,6 +216,8 @@ github.com/konsorten/go-windows-terminal-sequences
 github.com/kr/pretty
 # github.com/kr/text v0.1.0
 github.com/kr/text
+# github.com/lumjjb/seclkeywrap v0.0.0-20200213232257-f323c35282ec
+github.com/lumjjb/seclkeywrap
 # github.com/mattn/go-shellwords v1.0.9
 github.com/mattn/go-shellwords
 # github.com/matttproud/golang_protobuf_extensions v1.0.1
@@ -347,7 +349,7 @@ google.golang.org/grpc/connectivity
 google.golang.org/grpc/grpclog
 google.golang.org/grpc/internal
 google.golang.org/grpc/status
-# gopkg.in/square/go-jose.v2 v2.3.1
+# gopkg.in/square/go-jose.v2 v2.4.1
 gopkg.in/square/go-jose.v2
 gopkg.in/square/go-jose.v2/cipher
 gopkg.in/square/go-jose.v2/json

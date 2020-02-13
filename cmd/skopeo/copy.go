@@ -15,7 +15,7 @@ import (
 	"github.com/containers/ocicrypt"
 	encconfig "github.com/containers/ocicrypt/config"
 	enchelpers "github.com/containers/ocicrypt/helpers"
-	"github.com/containers/skopeo/seclkeywrap"
+	"github.com/lumjjb/seclkeywrap"
 	imgspecv1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/urfave/cli"
 )
