@@ -216,7 +216,7 @@ github.com/konsorten/go-windows-terminal-sequences
 github.com/kr/pretty
 # github.com/kr/text v0.1.0
 github.com/kr/text
-# github.com/lumjjb/seclkeywrap v0.0.0-20200213232257-f323c35282ec
+# github.com/lumjjb/seclkeywrap v0.0.0-20200225225941-0d8d0011e440
 github.com/lumjjb/seclkeywrap
 # github.com/mattn/go-shellwords v1.0.9
 github.com/mattn/go-shellwords
