@@ -271,6 +271,8 @@ github.com/lumjjb/seclkeywrap v0.0.0-20200302155103-f1c29672e074 h1:rqhWStVjorfM
 github.com/lumjjb/seclkeywrap v0.0.0-20200302155103-f1c29672e074/go.mod h1:u6A2m9zRzbjWKlfDuCeK4C3466Z2vV/cXD8gNZYo0VM=
 github.com/lumjjb/seclkeywrap v0.0.0-20200306182048-5ba8b5224f53 h1:1ztoVaDEBHWCf2bSac/vbry71tyzQjtgJTrAd4Ql/lg=
 github.com/lumjjb/seclkeywrap v0.0.0-20200306182048-5ba8b5224f53/go.mod h1:u6A2m9zRzbjWKlfDuCeK4C3466Z2vV/cXD8gNZYo0VM=
+github.com/lumjjb/seclkeywrap v0.0.0-20200306182932-812500f0eb8f h1:zFhYJvnS8kQ+RsE52JGZ/nNujqho0FpML7vKn22gJHo=
+github.com/lumjjb/seclkeywrap v0.0.0-20200306182932-812500f0eb8f/go.mod h1:u6A2m9zRzbjWKlfDuCeK4C3466Z2vV/cXD8gNZYo0VM=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
 github.com/mailru/easyjson v0.0.0-20160728113105-d5b7844b561a/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=
 github.com/mailru/easyjson v0.0.0-20190614124828-94de47d64c63/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=
