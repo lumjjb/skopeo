@@ -11,7 +11,7 @@ require (
 	github.com/docker/docker v1.4.2-0.20191101170500-ac7306503d23
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/go-check/check v0.0.0-20180628173108-788fd7840127
-	github.com/lumjjb/seclkeywrap v0.0.0-20200306182932-812500f0eb8f
+	github.com/lumjjb/seclkeywrap v0.0.0-20200326193448-87f24c6fe13b
 	github.com/opencontainers/go-digest v1.0.0-rc1
 	github.com/opencontainers/image-spec v1.0.2-0.20190823105129-775207bd45b6
 	github.com/opencontainers/image-tools v0.0.0-20170926011501-6d941547fa1d
